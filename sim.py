@@ -1,22 +1,6 @@
 import math, time
-
-#CONSTANTS
-sample_frequency = 10
-dt = 1/sample_frequency
-speed_mult = 0
-
-#kg m^2
-OUTER_MOI = 15.0
-INNER_MOI = 10.0
-
-OUTER_FRICTION_FORCE = 1
-INNER_FRICTION_FORCE = 1
-
-#mm
-OUTER_SIDE_LENGTH = 40.0 
-INNER_SIDE_LENGTH = 30.0
-
-FRAME_THICKNESS = 2.0  
+from constants import *
+import render
 
 #VARIABLES
 outer_theta = 0.0
@@ -91,6 +75,8 @@ if __name__ == "__main__":
         outer_torque, inner_torque = 0.01,0.01
         executePhysics(outer_torque, inner_torque, dt)
         print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER:{outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER:{inner_theta}/{fmod(inner_theta,2*math.pi):.2f} OUTER':{outer_dtheta:.2f} INNER':{inner_dtheta:.2f}")
+        render.render(outer_theta, inner_theta)
+        
         elapsed_time += dt
         if(speed_mult == 0):
             time.sleep(dt)
