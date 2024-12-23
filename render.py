@@ -11,8 +11,8 @@ from constants import *
 # width = 0
 aspect = 16.0/9.0
 fov = 100
-projectionPanelHeight = 50
-projectionPanelPos = np.array([0,-10,5])
+projectionPanelHeight = 60
+projectionPanelPos = np.array([0,-10,10])
 cameraDir = projectionPanelPos * -1 #[0,5,2]
 cameraSideways = np.array([0,0,1]) #can be undefined and will autogen
 
@@ -251,7 +251,7 @@ def drawing():
         # console.log(q)
         # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
         strokeQuad(q,height/projectionPanelHeight,[width/2,height/2], "#FFFFFF", 1)
-        print(q,height/projectionPanelHeight,[width/2,height/2])
+        # print(q,height/projectionPanelHeight,[width/2,height/2])
     
 
 
@@ -269,13 +269,26 @@ def addOuter():
 def addInner():
     createRect([0,0,0],INNER_SIDE_LENGTH,FRAME_THICKNESS,INNER_SIDE_LENGTH)
     createRect([0,0,0],INNER_SIDE_LENGTH-2*FRAME_THICKNESS,FRAME_THICKNESS,INNER_SIDE_LENGTH-2*FRAME_THICKNESS)
+    createRect([0,0,0],PLATFORM_SIDE_LENGTH,PLATFORM_SIDE_LENGTH,FRAME_THICKNESS/3)
+
+def addFrame():
+    outest = OUTER_SIDE_LENGTH + 2*FRAME_THICKNESS
+    createRect([0,0,-outest/2 + FRAME_THICKNESS/2],outest,outest,FRAME_THICKNESS)
+    createRect([0,0,-outest/2 + FRAME_THICKNESS/2],outest-2*FRAME_THICKNESS,outest-2*FRAME_THICKNESS,FRAME_THICKNESS)
+    
+    createRect([outest/2 - FRAME_THICKNESS/2,0,-outest/4 + FRAME_THICKNESS],FRAME_THICKNESS,FRAME_THICKNESS,outest/2)
+    createRect([-outest/2 + FRAME_THICKNESS/2,0,-outest/4 + FRAME_THICKNESS],FRAME_THICKNESS,FRAME_THICKNESS,outest/2)
+    #createRect([0,0,0],INNER_SIDE_LENGTH-2*FRAME_THICKNESS,FRAME_THICKNESS,INNER_SIDE_LENGTH-2*FRAME_THICKNESS)
+
 
 def setup2():
     createRect([0,0,0],15,15,15)
     createRect([0,0,0],2,2,2)
 
+angle = 0
+
 def render(outer_theta: float, inner_theta: float):
-    global x
+    global x, cameraDir, projectionPanelPos, angle
     global vertices, squares, quads
     
     screen.fill((0, 0, 0))
@@ -283,6 +296,21 @@ def render(outer_theta: float, inner_theta: float):
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
+    
+    move_speed = 1
+    rotate_speed = 0.01
+    
+    keys=pygame.key.get_pressed()
+    if keys[K_w]:
+        projectionPanelPos += [0,move_speed,0]
+        cameraDir = projectionPanelPos * -1
+    if keys[K_s]:
+        projectionPanelPos += [0,-move_speed,0]
+        cameraDir = projectionPanelPos * -1
+    if keys[K_a]:
+        angle += rotate_speed
+    if keys[K_d]:
+        angle -= rotate_speed
     
     # Update.
     vertices = []
@@ -298,6 +326,11 @@ def render(outer_theta: float, inner_theta: float):
     for i in range(len(vertices)):
         vertices[i] = rotateX(vertices[i], outer_theta)
     
+    addFrame()
+    
+    for i in range(len(vertices)):
+        vertices[i] = rotateZ(vertices[i], angle)
+    
     # Draw.
     drawing()
     
@@ -305,6 +338,9 @@ def render(outer_theta: float, inner_theta: float):
     fpsClock.tick(fps)
         
 x = 0
+y = 0
 if __name__ == "__main__":
     while(1):
-        render(0,0)
+        render(x,y)
+        x += 0.02
+        y += 0.04

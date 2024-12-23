@@ -72,7 +72,7 @@ if __name__ == "__main__":
     elapsed_time = 0
     while(1):
         desired_outer_theta, desired_inner_theta = profile(0.0)
-        outer_torque, inner_torque = 0.01,0.01
+        outer_torque, inner_torque = 0.1,0.1
         executePhysics(outer_torque, inner_torque, dt)
         print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER:{outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER:{inner_theta}/{fmod(inner_theta,2*math.pi):.2f} OUTER':{outer_dtheta:.2f} INNER':{inner_dtheta:.2f}")
         render.render(outer_theta, inner_theta)
