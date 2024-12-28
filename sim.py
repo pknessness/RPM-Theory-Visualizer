@@ -29,13 +29,17 @@ class PID:
         self.prevError = 0
         self.sumError = 0
         
+        self.pComp = 0
+        self.iComp = 0
+        self.dComp = 0
+        
     def calculate(self, desired: float, actual: float, dt: float):
         error = desired - actual
-        pComp = self.kP * error
+        self.pComp = self.kP * error
         self.sumError += (error * dt)
-        iComp = self.kI * self.sumError
-        dComp = self.kD * (error - self.prevError)/dt
-        return pComp + iComp + dComp
+        self.iComp = self.kI * self.sumError
+        self.dComp = self.kD * (error - self.prevError)/dt
+        return self.pComp + self.iComp + self.dComp
 
 def executePhysics(outer_torque: float, inner_torque: float, delta_time: float):
     global outer_theta, inner_theta, outer_dtheta, inner_dtheta
@@ -56,10 +60,18 @@ def executePhysics(outer_torque: float, inner_torque: float, delta_time: float):
     if(inner_dtheta < 0): inner_dir = -1
     elif(inner_dtheta > 0): inner_dir = 1
     
-    # outer_friction = -outer_dir * OUTER_FRICTION_FORCE
-    # inner_friction = -inner_dir * INNER_FRICTION_FORCE
+    outer_friction = (outer_dir * OUTER_FRICTION_FORCE/OUTER_MOI) * delta_time
+    inner_friction = (inner_dir * INNER_FRICTION_FORCE/OUTER_MOI) * delta_time
     
-    # if(outer_dtheta > )
+    if(abs(outer_dtheta) > abs(outer_friction)):
+        outer_dtheta -= outer_friction
+    else:
+        outer_dtheta = 0
+    if(abs(inner_dtheta) > abs(inner_friction)):
+        inner_dtheta -= inner_friction
+    else:
+        inner_dtheta = 0
+    
     return
 
 def executeGCalcs():
@@ -84,8 +96,8 @@ if __name__ == "__main__":
     elapsed_time = 0
     prev_time = time.time()
     
-    outer_pid = PID(1,0,1)
-    inner_pid = PID(1,0,1)
+    outer_pid = PID(10,0,0)
+    inner_pid = PID(10,0,0)
     
     desired_outer_theta, desired_inner_theta, outer_torque, inner_torque = [0,0,0,0]
     
@@ -128,15 +140,24 @@ if __name__ == "__main__":
                 outer_theta, inner_theta = rpm_profile.execute(0.0)
         executeGCalcs()
         print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} OUTER': {outer_dtheta:.2f} INNER': {inner_dtheta:.2f}")
-        render.render(outer_theta, inner_theta, [], [
-            WriteLine(f"SAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult} MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}", (255,255,255)),
-            WriteLine(f"ELAPSED TIME: {elapsed_time:.2f}s", (200,55,200)),
-            WriteLine(f"OUTER ANGLE: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} rad", (200,55,25)),
-            WriteLine(f"INNER ANGLE: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} rad", (55,200,25)),
-            WriteLine(f"OUTER ANGULAR VELOCITY: {outer_dtheta:.2f} rad/s", (200,55,25)),
-            WriteLine(f"INNER ANGULAR VELOCITY: {inner_dtheta:.2f} rad/s", (55,200,25)),
-            WriteLine(f"OUTER TORQUE: {outer_torque:.2f} Nm", (200,55,25)),
-            WriteLine(f"INNER TORQUE: {inner_torque:.2f} Nm", (55,200,25))])
+        
+        renderings = [
+        WriteLine(f"SAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult} MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}", (255,255,255)),
+        WriteLine(f"ELAPSED TIME: {elapsed_time:.2f}s", (200,55,200)),
+        WriteLine(f"OUTER ANGLE: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} rad", (200,55,25)),
+        WriteLine(f"INNER ANGLE: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} rad", (55,200,25)),
+        WriteLine(f"OUTER ANGULAR VELOCITY: {outer_dtheta:.2f} rad/s", (200,55,25)),
+        WriteLine(f"INNER ANGULAR VELOCITY: {inner_dtheta:.2f} rad/s", (55,200,25)),
+        WriteLine(f"OUTER TORQUE: {outer_torque:.2f} Nm", (200,55,25)),
+        WriteLine(f"INNER TORQUE: {inner_torque:.2f} Nm", (55,200,25))]
+        
+        desired = 0
+        if(PID_ENABLED):
+            desired = [desired_outer_theta,desired_inner_theta]
+            renderings.append(WriteLine(f"OUTER PID: P:{outer_pid.pComp:.2f} I:{outer_pid.iComp:.2f} D:{outer_pid.dComp:.2f}", (155,150,200)))
+            renderings.append(WriteLine(f"INNER PID: P:{inner_pid.pComp:.2f} I:{inner_pid.iComp:.2f} D:{inner_pid.dComp:.2f}", (155,150,200)))
+        
+        render.render([outer_theta, inner_theta],desired, [], renderings)
         
         elapsed_time += dt
         if(speed_mult == 1):

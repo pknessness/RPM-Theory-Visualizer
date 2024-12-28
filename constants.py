@@ -1,5 +1,5 @@
 #CONSTANTS
-sample_frequency = 10
+sample_frequency = 100
 dt = 1/sample_frequency
 speed_mult = 1
 
@@ -7,8 +7,9 @@ speed_mult = 1
 OUTER_MOI = 15.0
 INNER_MOI = 10.0
 
-OUTER_FRICTION_FORCE = 1
-INNER_FRICTION_FORCE = 1
+#Nm
+OUTER_FRICTION_FORCE = 0.5
+INNER_FRICTION_FORCE = 0.5
 
 #mm
 OUTER_SIDE_LENGTH = 50.0 

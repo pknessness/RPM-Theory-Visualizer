@@ -247,14 +247,14 @@ def addSquare(e, f, g, h):
     
     squares.append(square)
 
-def drawing():
+def drawing(color: str = "#FFFFFF"):
     for square in squares:
         q = squareToQuad(square)
         # console.log(squares[i])
         # console.log(q)
         # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
         w, h = pygame.display.get_window_size()
-        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], "#FFFFFF", 1)
+        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], color, 1)
         # print(q,height/projectionPanelHeight,[width/2,height/2])
     
 def drawVectors(vectors: list):
@@ -299,7 +299,7 @@ def setup2():
 
 angle = 0
 
-def render(outer_theta: float, inner_theta: float, vectors: list, text: list):
+def render(actual: list, desired: list, vectors: list, text: list):
     global x, cameraDir, projectionPanelPos, angle
     global vertices, squares, quads
     
@@ -324,26 +324,47 @@ def render(outer_theta: float, inner_theta: float, vectors: list, text: list):
     if keys[K_d]:
         angle -= rotate_speed
     
-    # Update.
+    if(type(desired) == list):
+        # Update DESIRED
+        vertices = []
+        squares = []
+        quads = []
+        addInner()
+        
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], desired[1])
+            
+        addOuter()
+        
+        for i in range(len(vertices)):
+            vertices[i] = rotateX(vertices[i], desired[0])
+        
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], angle)
+        
+        # Draw DESIRED
+        drawing("#BEF300")
+    
+    # Update ACTUAL
     vertices = []
     squares = []
     quads = []
     addInner()
     
     for i in range(len(vertices)):
-        vertices[i] = rotateZ(vertices[i], inner_theta)
+        vertices[i] = rotateZ(vertices[i], actual[1])
         
     addOuter()
     
     for i in range(len(vertices)):
-        vertices[i] = rotateX(vertices[i], outer_theta)
+        vertices[i] = rotateX(vertices[i], actual[0])
     
     addFrame()
     
     for i in range(len(vertices)):
         vertices[i] = rotateZ(vertices[i], angle)
     
-    # Draw.
+    # Draw ACTUAL
     drawing()
     
     writeHeight = 0
@@ -359,6 +380,6 @@ x = 0
 y = 0
 if __name__ == "__main__":
     while(1):
-        render(x,y, [], [])
+        render([x,y],[0,0], [], [])
         x += 0.02
         y += 0.04
