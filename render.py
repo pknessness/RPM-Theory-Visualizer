@@ -11,8 +11,8 @@ from constants import *
 # width = 0
 aspect = 16.0/9.0
 fov = 100
-projectionPanelHeight = 60
-projectionPanelPos = np.array([0,-10,10])
+projectionPanelHeight = 80
+projectionPanelPos = np.array([0,-20,10])
 cameraDir = projectionPanelPos * -1 #[0,5,2]
 cameraSideways = np.array([0,0,1]) #can be undefined and will autogen
 
@@ -22,11 +22,14 @@ quads = []
 
 pygame.init()
 
+pygame.font.init() # you have to call this at the start, 
+basic_font = pygame.font.SysFont('Agency FB', 30)
+
 fps = 60
 fpsClock = pygame.time.Clock()
 
-width, height = 640, 480
-screen = pygame.display.set_mode((width, height))
+start_width, start_height = 640, 480
+screen = pygame.display.set_mode((start_width, start_height), pygame.RESIZABLE)
 
 class Quad:
     def __init__(self, a, b, c, d):
@@ -250,10 +253,19 @@ def drawing():
         # console.log(squares[i])
         # console.log(q)
         # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
-        strokeQuad(q,height/projectionPanelHeight,[width/2,height/2], "#FFFFFF", 1)
+        w, h = pygame.display.get_window_size()
+        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], "#FFFFFF", 1)
         # print(q,height/projectionPanelHeight,[width/2,height/2])
     
-
+def drawVectors(vectors: list):
+    for vector in vectors:
+        q = 0
+        # console.log(squares[i])
+        # console.log(q)
+        # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
+        w, h = pygame.display.get_window_size()
+        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], "#FFFFFF", 1)
+        # print(q,height/projectionPanelHeight,[width/2,height/2])
 
 # def stuff():
 #     addSquare([-1,0,-1],[1,0,-1],[1,0,1],[-1,0,1])
@@ -287,7 +299,7 @@ def setup2():
 
 angle = 0
 
-def render(outer_theta: float, inner_theta: float):
+def render(outer_theta: float, inner_theta: float, vectors: list, text: list):
     global x, cameraDir, projectionPanelPos, angle
     global vertices, squares, quads
     
@@ -334,6 +346,12 @@ def render(outer_theta: float, inner_theta: float):
     # Draw.
     drawing()
     
+    writeHeight = 0
+    for line in text:
+        text_surface = basic_font.render(line.text, False, line.color)
+        screen.blit(text_surface, (0,writeHeight))
+        writeHeight += 40
+    
     pygame.display.flip()
     fpsClock.tick(fps)
         
@@ -341,6 +359,6 @@ x = 0
 y = 0
 if __name__ == "__main__":
     while(1):
-        render(x,y)
+        render(x,y, [], [])
         x += 0.02
         y += 0.04

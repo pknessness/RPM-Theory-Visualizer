@@ -1,6 +1,8 @@
 import math, time
 from constants import *
 import render
+import rpm_profile as rpm_profile
+import pygame
 
 #VARIABLES
 outer_theta = 0.0
@@ -27,12 +29,13 @@ class PID:
         self.prevError = 0
         self.sumError = 0
         
-    def calculate(desired: float, actual: float, dt: float):
-        return 0.0
-
-#RETURNS [outer_d2theta, inner_d2theta] 
-def PID(desired, actual, dt):
-    return [0,0]
+    def calculate(self, desired: float, actual: float, dt: float):
+        error = desired - actual
+        pComp = self.kP * error
+        self.sumError += (error * dt)
+        iComp = self.kI * self.sumError
+        dComp = self.kD * (error - self.prevError)/dt
+        return pComp + iComp + dComp
 
 def executePhysics(outer_torque: float, inner_torque: float, delta_time: float):
     global outer_theta, inner_theta, outer_dtheta, inner_dtheta
@@ -59,6 +62,9 @@ def executePhysics(outer_torque: float, inner_torque: float, delta_time: float):
     # if(outer_dtheta > )
     return
 
+def executeGCalcs():
+    return 0
+
 def fmod(num: float, base: float):
     op = num
     while(op > base):
@@ -67,16 +73,77 @@ def fmod(num: float, base: float):
         op += base
     return op
 
+PID_ENABLED = True
+
+MANUAL_CONTROL = True
+MANUAL_POS_SCALING = 0.01
+MANUAL_TORQUE_SCALING = 1
+
 if __name__ == "__main__":
-    print(f"STARTING SIMULATION\nSAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt} SPEED_MULT: {speed_mult}\n MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}\n")
+    print(f"STARTING SIMULATION\nSAMPLING_HZ: {sample_frequency}Hz SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult}\n MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}\n")
     elapsed_time = 0
+    prev_time = time.time()
+    
+    outer_pid = PID(1,0,1)
+    inner_pid = PID(1,0,1)
+    
+    desired_outer_theta, desired_inner_theta, outer_torque, inner_torque = [0,0,0,0]
+    
+    prevMouse = [False, False, False]
+    dragPos = [[0,0],[0,0],[0,0]]
     while(1):
-        desired_outer_theta, desired_inner_theta = profile(0.0)
-        outer_torque, inner_torque = 0.1,0.1
-        executePhysics(outer_torque, inner_torque, dt)
-        print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER:{outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER:{inner_theta}/{fmod(inner_theta,2*math.pi):.2f} OUTER':{outer_dtheta:.2f} INNER':{inner_dtheta:.2f}")
-        render.render(outer_theta, inner_theta)
+        mouse = pygame.mouse.get_pressed(num_buttons=3)
+        
+        if(PID_ENABLED):
+            if(MANUAL_CONTROL):
+                mouse_pos = pygame.mouse.get_pos()
+                if(mouse[0] and prevMouse[0]):
+                    disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
+                    desired_outer_theta += disp[1] * MANUAL_POS_SCALING
+                    desired_inner_theta += disp[0] * MANUAL_POS_SCALING
+                if(mouse[0]):
+                    dragPos[0] = mouse_pos
+                    
+                # if(mouse[0] and not prevMouse[0]):
+                #     dragPos
+            else:
+                desired_outer_theta, desired_inner_theta = rpm_profile.execute(0.0)
+            
+            outer_torque = outer_pid.calculate(desired_outer_theta, outer_theta, dt)
+            inner_torque = inner_pid.calculate(desired_inner_theta, inner_theta, dt)
+            executePhysics(outer_torque, inner_torque, dt)
+        else:
+            if(MANUAL_CONTROL):
+                mouse_pos = pygame.mouse.get_pos()
+                if(mouse[0] and prevMouse[0]):
+                    disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
+                    outer_theta += disp[1] * MANUAL_POS_SCALING
+                    inner_theta += disp[0] * MANUAL_POS_SCALING
+                if(mouse[0]):
+                    dragPos[0] = mouse_pos
+                    
+                # if(mouse[0] and not prevMouse[0]):
+                #     dragPos
+            else:
+                outer_theta, inner_theta = rpm_profile.execute(0.0)
+        executeGCalcs()
+        print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} OUTER': {outer_dtheta:.2f} INNER': {inner_dtheta:.2f}")
+        render.render(outer_theta, inner_theta, [], [
+            WriteLine(f"SAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult} MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}", (255,255,255)),
+            WriteLine(f"ELAPSED TIME: {elapsed_time:.2f}s", (200,55,200)),
+            WriteLine(f"OUTER ANGLE: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} rad", (200,55,25)),
+            WriteLine(f"INNER ANGLE: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} rad", (55,200,25)),
+            WriteLine(f"OUTER ANGULAR VELOCITY: {outer_dtheta:.2f} rad/s", (200,55,25)),
+            WriteLine(f"INNER ANGULAR VELOCITY: {inner_dtheta:.2f} rad/s", (55,200,25)),
+            WriteLine(f"OUTER TORQUE: {outer_torque:.2f} Nm", (200,55,25)),
+            WriteLine(f"INNER TORQUE: {inner_torque:.2f} Nm", (55,200,25))])
         
         elapsed_time += dt
-        if(speed_mult == 0):
-            time.sleep(dt)
+        if(speed_mult == 1):
+            cur_time = time.time()
+            print(cur_time-prev_time)
+            if((cur_time - prev_time) < dt):
+                time.sleep(dt - (cur_time - prev_time))
+            prev_time = time.time()
+        
+        prevMouse = mouse
