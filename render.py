@@ -20,6 +20,19 @@ vertices = []
 squares = []
 quads = []
 
+backgroundColor = "#000000"
+frameColor = "#FFFFFF"
+vectorColorX = "#E85F2A"
+vectorColorY = "#5FE82A"
+vectorColorZ = "#2A5FE8"
+
+vectorColors = ["#E85F2A", "#5FE82A", "#2A5FE8", "#9C27B0", "#F48FB1", "#FFB74D", "#00BCD4"]
+
+class vec3D:
+    def __init__(self, dir, src = [0,0,0]):
+        self.src = src
+        self.dir = dir
+
 pygame.init()
 
 pygame.font.init() # you have to call this at the start, 
@@ -247,7 +260,8 @@ def addSquare(e, f, g, h):
     
     squares.append(square)
 
-def drawing(color: str = "#FFFFFF"):
+def drawing(color: str = "#FFFFFF", reset = True):
+    global vertices, squares, quads
     for square in squares:
         q = squareToQuad(square)
         # console.log(squares[i])
@@ -256,6 +270,10 @@ def drawing(color: str = "#FFFFFF"):
         w, h = pygame.display.get_window_size()
         strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], color, 1)
         # print(q,height/projectionPanelHeight,[width/2,height/2])
+    if(reset):
+        vertices = []
+        squares = []
+        quads = []
     
 def drawVectors(vectors: list):
     for vector in vectors:
@@ -281,7 +299,7 @@ def addOuter():
 def addInner():
     createRect([0,0,0],INNER_SIDE_LENGTH,FRAME_THICKNESS,INNER_SIDE_LENGTH)
     createRect([0,0,0],INNER_SIDE_LENGTH-2*FRAME_THICKNESS,FRAME_THICKNESS,INNER_SIDE_LENGTH-2*FRAME_THICKNESS)
-    createRect([0,0,0],PLATFORM_SIDE_LENGTH,PLATFORM_SIDE_LENGTH,FRAME_THICKNESS/3)
+    createRect([0,0,FRAME_THICKNESS/6],PLATFORM_SIDE_LENGTH,PLATFORM_SIDE_LENGTH,FRAME_THICKNESS/3)
 
 def addFrame():
     outest = OUTER_SIDE_LENGTH + 2*FRAME_THICKNESS
@@ -299,11 +317,11 @@ def setup2():
 
 angle = 0
 
-def render(actual: list, desired: list, vectors: list, text: list):
+def render(actual: list, desired: list, vectors: list[vec3D], text: list):
     global x, cameraDir, projectionPanelPos, angle
     global vertices, squares, quads
     
-    screen.fill((0, 0, 0))
+    screen.fill(backgroundColor)
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
@@ -346,9 +364,10 @@ def render(actual: list, desired: list, vectors: list, text: list):
         drawing("#BEF300")
     
     # Update ACTUAL
-    vertices = []
-    squares = []
-    quads = []
+    # vertices = []
+    # squares = []
+    # quads = []
+    
     addInner()
     
     for i in range(len(vertices)):
@@ -365,6 +384,66 @@ def render(actual: list, desired: list, vectors: list, text: list):
         vertices[i] = rotateZ(vertices[i], angle)
     
     # Draw ACTUAL
+    drawing(frameColor)
+    
+    # Draw Vectors
+    # vertices = []
+    # squares = []
+    # quads = []
+    
+    cnt = 0
+    for v in vectors:
+        createRect([v.dir[0]/2 + v.src[0],v.dir[2]/2 + v.src[2],v.dir[1]/2 + v.src[1]], v.dir[0], v.dir[2], v.dir[1])
+        
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], actual[1])
+        for i in range(len(vertices)):
+            vertices[i] = rotateX(vertices[i], actual[0])
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], angle)
+        
+        drawing(vectorColors[(cnt)%len(vectorColors)])
+        cnt += 1
+        
+        # createRect([v[0]/2,0,0], v[0], 0, 0)
+        
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateZ(vertices[i], actual[1])
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateX(vertices[i], actual[0])
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateZ(vertices[i], angle)
+        
+        # drawing(vectorColorX)
+        
+        # createRect([0,0,v[1]/2], 0, 0, v[1])
+        
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateZ(vertices[i], actual[1])
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateX(vertices[i], actual[0])
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateZ(vertices[i], angle)
+        
+        # drawing(vectorColorY)
+        
+        # createRect([0,v[2]/2,0], 0, v[2], 0)
+        
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateZ(vertices[i], actual[1])
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateX(vertices[i], actual[0])
+        # for i in range(len(vertices)):
+        #     vertices[i] = rotateZ(vertices[i], angle)
+        
+        # drawing(vectorColorZ)
+        
+        # addSquare(
+        #     [center[0] + x/2,center[1] + y/2,center[2] + z/2],
+        #     [center[0] + x/2,center[1] + y/2,center[2] - z/2],
+        #     [center[0] + x/2,center[1] - y/2,center[2] - z/2],
+        #     [center[0] + x/2,center[1] - y/2,center[2] + z/2])
+    
     drawing()
     
     writeHeight = 0
@@ -378,8 +457,54 @@ def render(actual: list, desired: list, vectors: list, text: list):
         
 x = 0
 y = 0
+
+MANUAL_POS_SCALING = 0.01
+
 if __name__ == "__main__":
+    instaccel = [0.0,0.0,0.0]
+    
+    prevMouse = [False, False, False]
+    dragPos = [[0,0],[0,0],[0,0]]
+    
     while(1):
-        render([x,y],[0,0], [], [])
-        x += 0.02
-        y += 0.04
+        mouse = pygame.mouse.get_pressed(num_buttons=3)
+        
+        renderings = [
+            WriteLine(f"OUTER ANGLE: {x:.2f}/{fmod(x,2*math.pi):.2f} rad", (200,55,25)),
+            WriteLine(f"INNER ANGLE: {y:.2f}/{fmod(y,2*math.pi):.2f} rad", (55,200,25))]
+        
+        renderings.append(WriteLine(f"INST: X:{instaccel[0]:.2f} Y:{instaccel[1]:.2f} Z:{instaccel[2]:.2f}", (205,100,200)))
+        
+        disp = [0,10,0]
+        
+        render([x,y], None, [vec3D([instaccel[0],0,0], disp), vec3D([0,instaccel[1],0], disp), vec3D([0,0, instaccel[2]], disp)], renderings)
+        # x += 0.013291
+        # y += 0.023129
+        
+        mouse_pos = pygame.mouse.get_pos()
+        if(mouse[0] and prevMouse[0]):
+            disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
+            x += disp[1] * MANUAL_POS_SCALING
+            y += disp[0] * MANUAL_POS_SCALING
+        if(mouse[0]):
+            dragPos[0] = mouse_pos
+        
+        instaccel = [0,-9.81, 0]
+        
+        instaccel = rotateX(instaccel, x)
+        instaccel = rotateY(instaccel, -y)
+        
+        #instaccel = rotateZ(instaccel, -y)
+        prevMouse = mouse
+#xx nope
+#xy bias +x
+#yx
+#yy
+#zx
+#zy
+#x-x
+#x-y
+#y-x
+#y-y
+#z-x
+#z-y

@@ -18,6 +18,10 @@ PLATFORM_SIDE_LENGTH = 30.0
 
 FRAME_THICKNESS = 2.0  
 
+
+#profile (rad/s)
+VELO_MAX = 0.733 
+
 class WriteLine:
     def __init__(self, text, color):
         self.text = text
@@ -25,3 +29,11 @@ class WriteLine:
             
     def __str__(self):
         return f"{self.text}"
+    
+def fmod(num: float, base: float):
+    op = num
+    while(op > base):
+        op -= base
+    while(op < 0):
+        op += base
+    return op
