@@ -333,9 +333,13 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
     keys=pygame.key.get_pressed()
     if keys[K_w]:
         projectionPanelPos += [0,move_speed,0]
+        if(projectionPanelPos[1] > -1):
+            projectionPanelPos[1] = -1
         cameraDir = projectionPanelPos * -1
     if keys[K_s]:
         projectionPanelPos += [0,-move_speed,0]
+        if(projectionPanelPos[1] < -150):
+            projectionPanelPos[1] = -150
         cameraDir = projectionPanelPos * -1
     if keys[K_a]:
         angle += rotate_speed
@@ -393,7 +397,27 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
     
     cnt = 0
     for v in vectors:
-        createRect([v.dir[0]/2 + v.src[0],v.dir[2]/2 + v.src[2],v.dir[1]/2 + v.src[1]], v.dir[0], v.dir[2], v.dir[1])
+        xoffset, yoffset, zoffset = 0, 0, 0
+        if(v.dir[0] > 0): 
+            xoffset = VECTOR_BOX/2
+        elif(v.dir[0] < 0):
+            xoffset = -VECTOR_BOX/2
+            
+        if(v.dir[2] > 0): 
+            yoffset = VECTOR_BOX/2
+        elif(v.dir[2] < 0):
+            yoffset = -VECTOR_BOX/2
+            
+        if(v.dir[1] > 0): 
+            zoffset = VECTOR_BOX/2
+        elif(v.dir[1] < 0):
+            zoffset = -VECTOR_BOX/2
+            
+        xbox = v.dir[0] if v.dir[0] != 0 else VECTOR_BOX
+        ybox = v.dir[2] if v.dir[2] != 0 else VECTOR_BOX
+        zbox = v.dir[1] if v.dir[1] != 0 else VECTOR_BOX
+        
+        createRect([v.dir[0]/2 + v.src[0] + xoffset,v.dir[2]/2 + v.src[2] + yoffset,v.dir[1]/2 + v.src[1] + zoffset], xbox, ybox, zbox)
         
         for i in range(len(vertices)):
             vertices[i] = rotateZ(vertices[i], actual[1])
@@ -405,44 +429,16 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
         drawing(vectorColors[(cnt)%len(vectorColors)])
         cnt += 1
         
-        # createRect([v[0]/2,0,0], v[0], 0, 0)
+        createCube([v.src[0],v.src[2],v.src[1]], VECTOR_BOX)
         
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateZ(vertices[i], actual[1])
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateX(vertices[i], actual[0])
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateZ(vertices[i], angle)
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], actual[1])
+        for i in range(len(vertices)):
+            vertices[i] = rotateX(vertices[i], actual[0])
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], angle)
         
-        # drawing(vectorColorX)
-        
-        # createRect([0,0,v[1]/2], 0, 0, v[1])
-        
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateZ(vertices[i], actual[1])
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateX(vertices[i], actual[0])
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateZ(vertices[i], angle)
-        
-        # drawing(vectorColorY)
-        
-        # createRect([0,v[2]/2,0], 0, v[2], 0)
-        
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateZ(vertices[i], actual[1])
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateX(vertices[i], actual[0])
-        # for i in range(len(vertices)):
-        #     vertices[i] = rotateZ(vertices[i], angle)
-        
-        # drawing(vectorColorZ)
-        
-        # addSquare(
-        #     [center[0] + x/2,center[1] + y/2,center[2] + z/2],
-        #     [center[0] + x/2,center[1] + y/2,center[2] - z/2],
-        #     [center[0] + x/2,center[1] - y/2,center[2] - z/2],
-        #     [center[0] + x/2,center[1] - y/2,center[2] + z/2])
+        drawing(frameColor)
     
     drawing()
     
@@ -454,11 +450,18 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
     
     pygame.display.flip()
     fpsClock.tick(fps)
-        
+
+x_omega_prev = 0
+y_omega_prev = 0   
+x_prev = 0
+y_prev = 0   
 x = 0
 y = 0
 
 MANUAL_POS_SCALING = 0.01
+R_WORST_CASE = 0.21 #6 inch is 0.15m
+
+ticks = 0
 
 if __name__ == "__main__":
     instaccel = [0.0,0.0,0.0]
@@ -474,12 +477,15 @@ if __name__ == "__main__":
             WriteLine(f"INNER ANGLE: {y:.2f}/{fmod(y,2*math.pi):.2f} rad", (55,200,25))]
         
         renderings.append(WriteLine(f"INST: X:{instaccel[0]:.2f} Y:{instaccel[1]:.2f} Z:{instaccel[2]:.2f}", (205,100,200)))
+        renderings.append(WriteLine(f"ProjectionPanelY:{projectionPanelPos[1]:.2f} Angle:{angle:.2f}", (205,100,200)))
+        
         
         disp = [0,10,0]
         
         render([x,y], None, [vec3D([instaccel[0],0,0], disp), vec3D([0,instaccel[1],0], disp), vec3D([0,0, instaccel[2]], disp)], renderings)
-        # x += 0.013291
-        # y += 0.023129
+        #x += 0.013291
+        #y += 0.23129
+        #x += math.sin(ticks/10)/100
         
         mouse_pos = pygame.mouse.get_pos()
         if(mouse[0] and prevMouse[0]):
@@ -489,13 +495,29 @@ if __name__ == "__main__":
         if(mouse[0]):
             dragPos[0] = mouse_pos
         
-        instaccel = [0,-9.81, 0]
+        
+        omega_x = (x - x_prev) / dt
+        omega_y = (y - y_prev) / dt
+        
+        alpha_x = (omega_x - x_omega_prev) / dt
+        alpha_y = (omega_y - y_omega_prev) / dt
+        
+        instaccel = [0,-9.81,0]
         
         instaccel = rotateX(instaccel, x)
         instaccel = rotateY(instaccel, -y)
         
+        #instaccel[0] += R_WORST_CASE * alpha_x
+        #instaccel[2] += R_WORST_CASE * alpha_y
+        
         #instaccel = rotateZ(instaccel, -y)
         prevMouse = mouse
+        x_prev = x
+        y_prev = y
+        x_omega_prev = omega_x
+        y_omega_prev = omega_y
+        
+        ticks += 1
 #xx nope
 #xy bias +x
 #yx

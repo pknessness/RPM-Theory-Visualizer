@@ -18,6 +18,9 @@ inner_dtheta = 0.0
 
 #results
 instaccel = [0.0,-1.0,0.0]
+
+accumulate_accel = [0.0,0.0,0.0]
+accumulate_count = 0
 accel = [0.0,-1.0,0.0]
 scalar = 9.81
 
@@ -84,16 +87,24 @@ def executeGCalcs():
         
     instaccel = render.rotateX(instaccel, outer_theta)
     instaccel = render.rotateY(instaccel, -inner_theta)
-    return 0
+    return
 
 def projectionEffectiveG():
-    return 0
+    global accumulate_count, accumulate_accel, accel, instaccel
+    accumulate_accel[0] += instaccel[0]
+    accumulate_accel[1] += instaccel[1]
+    accumulate_accel[2] += instaccel[2]
+    
+    accumulate_count += 1
+    
+    accel = [accumulate_accel[0]/accumulate_count, accumulate_accel[1]/accumulate_count, accumulate_accel[2]/accumulate_count]
+    return
 
 POS_PID_ENABLED = False
-VELO_PID_ENABLED = True
-VELO_ONLY_ENABLED = False
+VELO_PID_ENABLED = False
+VELO_ONLY_ENABLED = True
 
-MANUAL_CONTROL = True
+MANUAL_CONTROL = False
 MANUAL_POS_SCALING = 0.01
 MANUAL_TORQUE_SCALING = 1
 
@@ -141,7 +152,7 @@ if __name__ == "__main__":
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
             else:
-                desired_outer_theta, desired_inner_theta = rpm_profile.executePos(0.0)
+                desired_outer_theta, desired_inner_theta = rpm_profile.executePos(elapsed_time, 0.0)
             
             outer_torque = outer_pid_pos.calculate(desired_outer_theta, outer_theta, dt)
             inner_torque = inner_pid_pos.calculate(desired_inner_theta, inner_theta, dt)
@@ -159,7 +170,7 @@ if __name__ == "__main__":
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
             else:
-                desired_outer_theta, desired_inner_theta = rpm_profile.executePos(0.0)
+                desired_outer_theta, desired_inner_theta = rpm_profile.executePos(elapsed_time, 0.0)
                 
             desired_outer_omega = velo_outer_pid_pos.calculate(desired_outer_theta, outer_theta, dt)
             desired_inner_omega = velo_inner_pid_pos.calculate(desired_inner_theta, inner_theta, dt)
@@ -181,7 +192,7 @@ if __name__ == "__main__":
                 else:
                     dragPos[0] = mouse_pos
             else:
-                desired_outer_theta, desired_inner_theta = rpm_profile.executeVelo(0.0)
+                desired_outer_omega, desired_inner_omega = rpm_profile.executeVelo(elapsed_time, 0.0)
                     
             desired_outer_omega = max(-VELO_MAX, min(VELO_MAX, desired_outer_omega))
             desired_inner_omega = max(-VELO_MAX, min(VELO_MAX, desired_inner_omega))
@@ -202,7 +213,7 @@ if __name__ == "__main__":
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
             else:
-                outer_theta, inner_theta = rpm_profile.execute(0.0)
+                outer_theta, inner_theta = rpm_profile.execute(elapsed_time, 0.0)
 
         executeGCalcs()
         
@@ -225,7 +236,7 @@ if __name__ == "__main__":
             desired = [desired_outer_theta,desired_inner_theta]
             renderings.append(WriteLine(f"OUTER PID: P:{outer_pid_pos.pComp:.2f} I:{outer_pid_pos.iComp:.2f} D:{outer_pid_pos.dComp:.2f}", (155,150,200)))
             renderings.append(WriteLine(f"INNER PID: P:{inner_pid_pos.pComp:.2f} I:{inner_pid_pos.iComp:.2f} D:{inner_pid_pos.dComp:.2f}", (155,150,200)))
-        elif(VELO_PID_ENABLED or VELO_ONLY_ENABLED):
+        elif(VELO_PID_ENABLED):
             desired = [desired_outer_theta,desired_inner_theta]
             renderings.append(WriteLine(f"OUTER PID V: {desired_outer_omega:.2f}/{prev_outer_omega:.2f} P:{velo_outer_pid.pComp:.2f} I:{velo_outer_pid.iComp:.2f} D:{velo_outer_pid.dComp:.2f}", (155,150,200)))
             renderings.append(WriteLine(f"INNER PID V: {desired_inner_omega:.2f}/{prev_inner_omega:.2f} P:{velo_inner_pid.pComp:.2f} I:{velo_inner_pid.iComp:.2f} D:{velo_inner_pid.dComp:.2f}", (155,150,200)))
@@ -233,6 +244,8 @@ if __name__ == "__main__":
             renderings.append(WriteLine(f"INNER PID P: P:{velo_inner_pid_pos.pComp:.2f} I:{velo_inner_pid_pos.iComp:.2f} D:{velo_inner_pid_pos.dComp:.2f}", (155,150,200)))
         
         renderings.append(WriteLine(f"EFFECTIVE: X:{accel[0]:.2f} Y:{accel[1]:.2f} Z:{accel[2]:.2f}", (205,100,200)))
+        renderings.append(WriteLine(f"INSTANTANEOUS: X:{instaccel[0]:.2f} Y:{instaccel[1]:.2f} Z:{instaccel[2]:.2f}", (205,100,200)))
+        
         
         #[accel[0] * scalar, accel[1] * scalar, accel[2] * scalar]
         render.render([outer_theta, inner_theta], desired, 

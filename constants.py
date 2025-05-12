@@ -1,7 +1,7 @@
 #CONSTANTS
-sample_frequency = 100
-dt = 1/sample_frequency
-speed_mult = 1
+sample_frequency = 100 #Hz
+dt = 1/sample_frequency #seconds
+speed_mult = 1 
 
 #kg m^2
 OUTER_MOI = 15.0
@@ -18,6 +18,8 @@ PLATFORM_SIDE_LENGTH = 30.0
 
 FRAME_THICKNESS = 2.0  
 
+#VectorBox
+VECTOR_BOX = 1
 
 #profile (rad/s)
 VELO_MAX = 0.733 
