@@ -1,7 +1,9 @@
+import math
+
 #CONSTANTS
 sample_frequency = 100 #Hz
 dt = 1/sample_frequency #seconds
-speed_mult = 1 
+speed_mult = 0 
 
 #kg m^2
 OUTER_MOI = 15.0
@@ -23,6 +25,13 @@ VECTOR_BOX = 1
 
 #profile (rad/s)
 VELO_MAX = 0.733 
+
+def mag2(vector: list):
+    return math.sqrt(vector[0]*vector[0] + vector[1]*vector[1])
+
+def mag3(vector: list):
+    return math.sqrt(vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2])
+
 
 class WriteLine:
     def __init__(self, text, color):

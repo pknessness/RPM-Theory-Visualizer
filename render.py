@@ -13,6 +13,7 @@ aspect = 16.0/9.0
 fov = 100
 projectionPanelHeight = 80
 projectionPanelPos = np.array([0,-20,10])
+zoomFactor = 1
 cameraDir = projectionPanelPos * -1 #[0,5,2]
 cameraSideways = np.array([0,0,1]) #can be undefined and will autogen
 
@@ -29,20 +30,26 @@ vectorColorZ = "#2A5FE8"
 vectorColors = ["#E85F2A", "#5FE82A", "#2A5FE8", "#9C27B0", "#F48FB1", "#FFB74D", "#00BCD4"]
 
 class vec3D:
-    def __init__(self, dir, src = [0,0,0]):
+    def __init__(self, dir: list, src = [0,0,0], scalar = 1, solid = False):
         self.src = src
-        self.dir = dir
-
-pygame.init()
-
-pygame.font.init() # you have to call this at the start, 
-basic_font = pygame.font.SysFont('Agency FB', 30)
+        self.dir = [dir[0]*scalar, dir[1]*scalar, dir[2]*scalar]
+        self.solid = solid
 
 fps = 60
-fpsClock = pygame.time.Clock()
-
 start_width, start_height = 640, 480
-screen = pygame.display.set_mode((start_width, start_height), pygame.RESIZABLE)
+
+basic_font, fpsClock, screen = None, None, None
+
+def init():
+    global fps, start_height, start_width, basic_font, fpsClock, screen
+    pygame.init()
+
+    pygame.font.init() # you have to call this at the start, 
+    basic_font = pygame.font.SysFont('Agency FB', 30)
+
+    fpsClock = pygame.time.Clock()
+
+    screen = pygame.display.set_mode((start_width, start_height), pygame.RESIZABLE)
 
 class Quad:
     def __init__(self, a, b, c, d):
@@ -57,9 +64,9 @@ class Quad:
 def rotateTranslateX(vertex):
     theta = math.atan2(cameraDir[1],cameraDir[2])
     v2 = [
-        vertex[0] - projectionPanelPos[0],
-        vertex[1] - projectionPanelPos[1],
-        vertex[2] - projectionPanelPos[2]]
+        vertex[0] - projectionPanelPos[0]*zoomFactor,
+        vertex[1] - projectionPanelPos[1]*zoomFactor,
+        vertex[2] - projectionPanelPos[2]*zoomFactor]
     cs = math.cos(theta)
     sn = math.sin(theta)
     v2 = [v2[0], v2[1] * cs - v2[2] * sn, v2[1] * sn + v2[2] * cs]
@@ -69,9 +76,9 @@ def rotateTranslateY(vertex):
     theta = math.atan2(cameraDir[2],cameraDir[0])
     # print("theta",theta)
     v2 = [
-        vertex[0] - projectionPanelPos[0],
-        vertex[1] - projectionPanelPos[1],
-        vertex[2] - projectionPanelPos[2]]
+        vertex[0] - projectionPanelPos[0]*zoomFactor,
+        vertex[1] - projectionPanelPos[1]*zoomFactor,
+        vertex[2] - projectionPanelPos[2]*zoomFactor]
     # print("v2",v2)
     cs = math.cos(theta)
     sn = math.sin(theta)
@@ -82,17 +89,17 @@ def rotateTranslateY(vertex):
 
 def rotateTranslateZ(vertex):
     theta = math.atan2(cameraDir[1],cameraDir[0])
-    print("theta",theta)
+    # print("theta",theta)
     v2 = [
-        vertex[0] - projectionPanelPos[0],
-        vertex[1] - projectionPanelPos[1],
-        vertex[2] - projectionPanelPos[2]]
-    print("v2",v2)
+        vertex[0] - projectionPanelPos[0]*zoomFactor,
+        vertex[1] - projectionPanelPos[1]*zoomFactor,
+        vertex[2] - projectionPanelPos[2]*zoomFactor]
+    # print("v2",v2)
     cs = math.cos(theta)
     sn = math.sin(theta)
     #v2 = [v2[0], v2[1] * cs - v2[2] * sn, v2[1] * sn + v2[2] * cs]
     v2 = [v2[0] * cs - v2[1] * sn, v2[0] * sn + v2[1] * cs, v2[2]]
-    print("v2",v2)
+    # print("v2",v2)
     return v2
 
 def rotateX(vertex, angle):
@@ -113,23 +120,6 @@ def rotateZ(vertex, angle):
     v2 = [vertex[0] * cs - vertex[1] * sn, vertex[0] * sn + vertex[1] * cs, vertex[2]]
     return v2
 
-def fillQuad(quad: Quad, scale: float, pixelOffset, color = "#FFFFFF"):
-    # ctx.beginPath()
-    # ctx.fillStyle = color
-    # ctx.moveTo(quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1])
-    # ctx.lineTo(quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1])
-    # ctx.lineTo(quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1])
-    # ctx.lineTo(quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1])
-    # ctx.lineTo(quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1])
-    # ctx.fillStyle = "#FFFFFF"
-    # ctx.fill()
-    
-    pygame.draw.line(screen, pygame.Color(color), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]))
-    pygame.draw.line(screen, pygame.Color(color), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]))
-    pygame.draw.line(screen, pygame.Color(color), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]))
-    pygame.draw.line(screen, pygame.Color(color), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]))
-
-
 def strokeQuad(quad: Quad, scale: float, pixelOffset, color = "#FFFFFF", lineWidth = 2):
     # ctx.beginPath()
     # ctx.strokeStyle = color
@@ -142,10 +132,20 @@ def strokeQuad(quad: Quad, scale: float, pixelOffset, color = "#FFFFFF", lineWid
     # # ctx.fillStyle = "#FFFFFF"
     # ctx.stroke()
     
-    pygame.draw.line(screen, pygame.Color(color), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), lineWidth)
-    pygame.draw.line(screen, pygame.Color(color), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), lineWidth)
-    pygame.draw.line(screen, pygame.Color(color), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), lineWidth)
-    pygame.draw.line(screen, pygame.Color(color), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), lineWidth)
+    pygame.draw.polygon(screen, pygame.Color(color), [(quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1])], lineWidth)
+    
+    # pygame.draw.line(screen, pygame.Color(color), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), lineWidth)
+    # pygame.draw.line(screen, pygame.Color(color), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), lineWidth)
+    # pygame.draw.line(screen, pygame.Color(color), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), lineWidth)
+    # pygame.draw.line(screen, pygame.Color(color), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), lineWidth)
+
+# def fillQuad(quad: Quad, scale: float, pixelOffset, color = "#FFFFFF", lineWidth = 2):
+#     pygame.draw.polygon(screen, pygame.Color(color), [(quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1])], lineWidth)
+        
+#     # pygame.draw.line(screen, pygame.Color(color), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), lineWidth)
+#     # pygame.draw.line(screen, pygame.Color(color), (quad.b[0] * scale + pixelOffset[0], quad.b[1] * scale + pixelOffset[1]), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), lineWidth)
+#     # pygame.draw.line(screen, pygame.Color(color), (quad.c[0] * scale + pixelOffset[0], quad.c[1] * scale + pixelOffset[1]), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), lineWidth)
+#     # pygame.draw.line(screen, pygame.Color(color), (quad.d[0] * scale + pixelOffset[0], quad.d[1] * scale + pixelOffset[1]), (quad.a[0] * scale + pixelOffset[0], quad.a[1] * scale + pixelOffset[1]), lineWidth)
 
 
 
@@ -260,7 +260,7 @@ def addSquare(e, f, g, h):
     
     squares.append(square)
 
-def drawing(color: str = "#FFFFFF", reset = True):
+def drawing(color: str = "#FFFFFF", reset = True, solid = False):
     global vertices, squares, quads
     for square in squares:
         q = squareToQuad(square)
@@ -268,22 +268,22 @@ def drawing(color: str = "#FFFFFF", reset = True):
         # console.log(q)
         # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
         w, h = pygame.display.get_window_size()
-        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], color, 1)
+        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], color, 1 if (not solid) else 0)
         # print(q,height/projectionPanelHeight,[width/2,height/2])
     if(reset):
         vertices = []
         squares = []
         quads = []
     
-def drawVectors(vectors: list):
-    for vector in vectors:
-        q = 0
-        # console.log(squares[i])
-        # console.log(q)
-        # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
-        w, h = pygame.display.get_window_size()
-        strokeQuad(q,h/projectionPanelHeight,[w/2,h/2], "#FFFFFF", 1)
-        # print(q,height/projectionPanelHeight,[width/2,height/2])
+# def drawVectors(vectors: list):
+#     for vector in vectors:
+#         q = 0
+#         # console.log(squares[i])
+#         # console.log(q)
+#         # fillQuad(q,height/projectionPanelHeight,[width/2,height/2])
+#         w, h = pygame.display.get_window_size()
+#         fillQuad(q,h/projectionPanelHeight,[w/2,h/2], "#FFFFFF", 1)
+#         # print(q,height/projectionPanelHeight,[width/2,height/2])
 
 # def stuff():
 #     addSquare([-1,0,-1],[1,0,-1],[1,0,1],[-1,0,1])
@@ -318,7 +318,7 @@ def setup2():
 angle = 0
 
 def render(actual: list, desired: list, vectors: list[vec3D], text: list):
-    global x, cameraDir, projectionPanelPos, angle
+    global x, cameraDir, projectionPanelPos, angle, fov, zoomFactor
     global vertices, squares, quads
     
     screen.fill(backgroundColor)
@@ -326,6 +326,13 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
+        elif event.type == MOUSEWHEEL:
+            # fov += event.y * 10
+            zoomFactor -= event.y / 10
+            if(zoomFactor < -2.4):
+                zoomFactor = -2.4
+            elif(zoomFactor > 2):
+                zoomFactor = 2
     
     move_speed = 1
     rotate_speed = 0.01
@@ -412,12 +419,8 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
             zoffset = VECTOR_BOX/2
         elif(v.dir[1] < 0):
             zoffset = -VECTOR_BOX/2
-            
-        xbox = v.dir[0] if v.dir[0] != 0 else VECTOR_BOX
-        ybox = v.dir[2] if v.dir[2] != 0 else VECTOR_BOX
-        zbox = v.dir[1] if v.dir[1] != 0 else VECTOR_BOX
         
-        createRect([v.dir[0]/2 + v.src[0] + xoffset,v.dir[2]/2 + v.src[2] + yoffset,v.dir[1]/2 + v.src[1] + zoffset], xbox, ybox, zbox)
+        createRect([v.dir[0]/2 + v.src[0] + xoffset, v.src[2] + 0, v.src[1] + 0], v.dir[0], VECTOR_BOX, VECTOR_BOX)
         
         for i in range(len(vertices)):
             vertices[i] = rotateZ(vertices[i], actual[1])
@@ -426,8 +429,29 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
         for i in range(len(vertices)):
             vertices[i] = rotateZ(vertices[i], angle)
         
-        drawing(vectorColors[(cnt)%len(vectorColors)])
-        cnt += 1
+        drawing(vectorColors[0], True, v.solid)
+        
+        createRect([v.src[0] + 0,v.dir[2]/2 + v.src[2] + yoffset, v.src[1] + 0], VECTOR_BOX, v.dir[2], VECTOR_BOX)
+        
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], actual[1])
+        for i in range(len(vertices)):
+            vertices[i] = rotateX(vertices[i], actual[0])
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], angle)
+        
+        drawing(vectorColors[1], True, v.solid)
+        
+        createRect([ v.src[0] + 0, v.src[2] + 0,v.dir[1]/2 + v.src[1] + zoffset], VECTOR_BOX, VECTOR_BOX, v.dir[1])
+        
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], actual[1])
+        for i in range(len(vertices)):
+            vertices[i] = rotateX(vertices[i], actual[0])
+        for i in range(len(vertices)):
+            vertices[i] = rotateZ(vertices[i], angle)
+        
+        drawing(vectorColors[2], True, v.solid)
         
         createCube([v.src[0],v.src[2],v.src[1]], VECTOR_BOX)
         
@@ -438,9 +462,11 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list):
         for i in range(len(vertices)):
             vertices[i] = rotateZ(vertices[i], angle)
         
-        drawing(frameColor)
+        drawing(frameColor, True, v.solid)
     
     drawing()
+    
+    # print(zoomFactor)
     
     writeHeight = 0
     for line in text:
@@ -465,9 +491,12 @@ ticks = 0
 
 if __name__ == "__main__":
     instaccel = [0.0,0.0,0.0]
+    acce = [0.0,0.0,0.0]
     
     prevMouse = [False, False, False]
     dragPos = [[0,0],[0,0],[0,0]]
+    
+    init()
     
     while(1):
         mouse = pygame.mouse.get_pressed(num_buttons=3)
@@ -482,7 +511,7 @@ if __name__ == "__main__":
         
         disp = [0,10,0]
         
-        render([x,y], None, [vec3D([instaccel[0],0,0], disp), vec3D([0,instaccel[1],0], disp), vec3D([0,0, instaccel[2]], disp)], renderings)
+        render([x,y], None, [vec3D(instaccel, disp), vec3D(acce, disp, 1, True)], renderings)
         #x += 0.013291
         #y += 0.23129
         #x += math.sin(ticks/10)/100
@@ -506,6 +535,11 @@ if __name__ == "__main__":
         
         instaccel = rotateX(instaccel, x)
         instaccel = rotateY(instaccel, -y)
+        
+        acce = [0,-3,0]
+        
+        acce = rotateX(acce, x)
+        acce = rotateY(acce, -y)
         
         #instaccel[0] += R_WORST_CASE * alpha_x
         #instaccel[2] += R_WORST_CASE * alpha_y

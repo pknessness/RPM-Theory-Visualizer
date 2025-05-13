@@ -3,6 +3,9 @@ from constants import *
 import render
 import rpm_profile as rpm_profile
 import pygame
+from datetime import datetime, timezone
+import signal
+import sys
 
 #VARIABLES
 prev_outer_theta = 0.0
@@ -23,6 +26,20 @@ accumulate_accel = [0.0,0.0,0.0]
 accumulate_count = 0
 accel = [0.0,-1.0,0.0]
 scalar = 9.81
+
+doRender = False
+
+elapsed_time = 0
+
+def endPrint():
+    print(f"Time: {elapsed_time}s Effective Accel: {mag3(accel)}G")
+    
+
+def signal_handler(signal, frame):
+    endPrint()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 #RETURNS [desired_outer_theta, desired_inner_theta] 
 def profile(desired_g: float):
@@ -110,9 +127,19 @@ MANUAL_TORQUE_SCALING = 1
 
 MANUAL_VELO_SCALING = 0.01
 
+StopAtXSeconds = 60 * 60 * 1 # 1hr
+
+filename = "blank"
+
+def writeFile(text):
+    f = open(filename + ".csv", "a")
+    f.write(text)
+
 if __name__ == "__main__":
+    if(doRender):
+        render.init()
+    
     print(f"STARTING SIMULATION\nSAMPLING_HZ: {sample_frequency}Hz SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult}\n MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}\n")
-    elapsed_time = 0
     prev_time = time.time()
     
     outer_pid_pos = PID(10,0,4)
@@ -130,8 +157,17 @@ if __name__ == "__main__":
     
     prevMouse = [False, False, False]
     dragPos = [[0,0],[0,0],[0,0]]
+    
+    now = datetime.now()
+    filename = "logs/log_"+now.strftime("%d-%m-%Y_%H_%M_%S")
+    
+    writeFile("time (ms), inner (rad), outer (rad), accel_x, accel_y, accel_z, accel_effective\n")
+    
+    rpm_profile.seed(0)
+    
     while(1):
-        mouse = pygame.mouse.get_pressed(num_buttons=3)
+        if(doRender and MANUAL_CONTROL):
+            mouse = pygame.mouse.get_pressed(num_buttons=3)
         
         prev_outer_omega = (outer_theta - prev_outer_theta)/dt
         prev_inner_omega = (inner_theta - prev_inner_theta)/dt
@@ -140,7 +176,7 @@ if __name__ == "__main__":
         prev_inner_theta = inner_theta
         
         if(POS_PID_ENABLED):
-            if(MANUAL_CONTROL):
+            if(doRender and MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0] and prevMouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -158,7 +194,7 @@ if __name__ == "__main__":
             inner_torque = inner_pid_pos.calculate(desired_inner_theta, inner_theta, dt)
             executePhysics(outer_torque, inner_torque, dt)
         elif(VELO_PID_ENABLED):
-            if(MANUAL_CONTROL):
+            if(doRender and MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0] and prevMouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -183,7 +219,7 @@ if __name__ == "__main__":
         elif(VELO_ONLY_ENABLED):
             desired_outer_omega = 0
             desired_inner_omega = 0
-            if(MANUAL_CONTROL):
+            if(doRender and MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -192,7 +228,7 @@ if __name__ == "__main__":
                 else:
                     dragPos[0] = mouse_pos
             else:
-                desired_outer_omega, desired_inner_omega = rpm_profile.executeVelo(elapsed_time, 0.0)
+                desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshal(elapsed_time, 0.0)
                     
             desired_outer_omega = max(-VELO_MAX, min(VELO_MAX, desired_outer_omega))
             desired_inner_omega = max(-VELO_MAX, min(VELO_MAX, desired_inner_omega))
@@ -201,7 +237,7 @@ if __name__ == "__main__":
                 
             executePhysics(outer_torque, inner_torque, dt)
         else:
-            if(MANUAL_CONTROL):
+            if(doRender and MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0] and prevMouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -219,45 +255,56 @@ if __name__ == "__main__":
         
         projectionEffectiveG()
         
-        print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} OUTER': {outer_dtheta:.2f} INNER': {inner_dtheta:.2f}")
+        #print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} OUTER': {outer_dtheta:.2f} INNER': {inner_dtheta:.2f}")
+        if(doRender):
+            renderings = [
+            WriteLine(f"SAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult} MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}", (255,255,255)),
+            WriteLine(f"ELAPSED TIME: {elapsed_time:.2f}s", (200,55,200)),
+            WriteLine(f"OUTER ANGLE: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} rad", (200,55,25)),
+            WriteLine(f"INNER ANGLE: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} rad", (55,200,25)),
+            WriteLine(f"OUTER ANGULAR VELOCITY: {outer_dtheta:.2f} rad/s", (200,55,25)),
+            WriteLine(f"INNER ANGULAR VELOCITY: {inner_dtheta:.2f} rad/s", (55,200,25)),
+            WriteLine(f"OUTER TORQUE: {outer_torque:.2f} Nm", (200,55,25)),
+            WriteLine(f"INNER TORQUE: {inner_torque:.2f} Nm", (55,200,25))]
+            
+            desired = 0
+            if(POS_PID_ENABLED):
+                desired = [desired_outer_theta,desired_inner_theta]
+                renderings.append(WriteLine(f"OUTER PID: P:{outer_pid_pos.pComp:.2f} I:{outer_pid_pos.iComp:.2f} D:{outer_pid_pos.dComp:.2f}", (155,150,200)))
+                renderings.append(WriteLine(f"INNER PID: P:{inner_pid_pos.pComp:.2f} I:{inner_pid_pos.iComp:.2f} D:{inner_pid_pos.dComp:.2f}", (155,150,200)))
+            elif(VELO_PID_ENABLED):
+                desired = [desired_outer_theta,desired_inner_theta]
+                renderings.append(WriteLine(f"OUTER PID V: {desired_outer_omega:.2f}/{prev_outer_omega:.2f} P:{velo_outer_pid.pComp:.2f} I:{velo_outer_pid.iComp:.2f} D:{velo_outer_pid.dComp:.2f}", (155,150,200)))
+                renderings.append(WriteLine(f"INNER PID V: {desired_inner_omega:.2f}/{prev_inner_omega:.2f} P:{velo_inner_pid.pComp:.2f} I:{velo_inner_pid.iComp:.2f} D:{velo_inner_pid.dComp:.2f}", (155,150,200)))
+                renderings.append(WriteLine(f"OUTER PID P: P:{velo_outer_pid_pos.pComp:.2f} I:{velo_outer_pid_pos.iComp:.2f} D:{velo_outer_pid_pos.dComp:.2f}", (155,150,200)))
+                renderings.append(WriteLine(f"INNER PID P: P:{velo_inner_pid_pos.pComp:.2f} I:{velo_inner_pid_pos.iComp:.2f} D:{velo_inner_pid_pos.dComp:.2f}", (155,150,200)))
+            
+            renderings.append(WriteLine(f"EFFECTIVE: X:{accel[0]:.2f} Y:{accel[1]:.2f} Z:{accel[2]:.2f}", (205,100,200)))
+            renderings.append(WriteLine(f"INSTANTANEOUS: X:{instaccel[0]:.2f} Y:{instaccel[1]:.2f} Z:{instaccel[2]:.2f}", (205,100,200)))
+            
+            
+            #[accel[0] * scalar, accel[1] * scalar, accel[2] * scalar]
+            # render.render([outer_theta, inner_theta], desired, 
+            #                 [render.vec3D(instaccel, [0,0,0], 9.81, False)], 
+            #                 renderings)
         
-        renderings = [
-        WriteLine(f"SAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult} MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}", (255,255,255)),
-        WriteLine(f"ELAPSED TIME: {elapsed_time:.2f}s", (200,55,200)),
-        WriteLine(f"OUTER ANGLE: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} rad", (200,55,25)),
-        WriteLine(f"INNER ANGLE: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} rad", (55,200,25)),
-        WriteLine(f"OUTER ANGULAR VELOCITY: {outer_dtheta:.2f} rad/s", (200,55,25)),
-        WriteLine(f"INNER ANGULAR VELOCITY: {inner_dtheta:.2f} rad/s", (55,200,25)),
-        WriteLine(f"OUTER TORQUE: {outer_torque:.2f} Nm", (200,55,25)),
-        WriteLine(f"INNER TORQUE: {inner_torque:.2f} Nm", (55,200,25))]
+            render.render([outer_theta, inner_theta], desired, 
+                [render.vec3D(accel, [0,0,0], 9.81, False)], 
+                renderings)
         
-        desired = 0
-        if(POS_PID_ENABLED):
-            desired = [desired_outer_theta,desired_inner_theta]
-            renderings.append(WriteLine(f"OUTER PID: P:{outer_pid_pos.pComp:.2f} I:{outer_pid_pos.iComp:.2f} D:{outer_pid_pos.dComp:.2f}", (155,150,200)))
-            renderings.append(WriteLine(f"INNER PID: P:{inner_pid_pos.pComp:.2f} I:{inner_pid_pos.iComp:.2f} D:{inner_pid_pos.dComp:.2f}", (155,150,200)))
-        elif(VELO_PID_ENABLED):
-            desired = [desired_outer_theta,desired_inner_theta]
-            renderings.append(WriteLine(f"OUTER PID V: {desired_outer_omega:.2f}/{prev_outer_omega:.2f} P:{velo_outer_pid.pComp:.2f} I:{velo_outer_pid.iComp:.2f} D:{velo_outer_pid.dComp:.2f}", (155,150,200)))
-            renderings.append(WriteLine(f"INNER PID V: {desired_inner_omega:.2f}/{prev_inner_omega:.2f} P:{velo_inner_pid.pComp:.2f} I:{velo_inner_pid.iComp:.2f} D:{velo_inner_pid.dComp:.2f}", (155,150,200)))
-            renderings.append(WriteLine(f"OUTER PID P: P:{velo_outer_pid_pos.pComp:.2f} I:{velo_outer_pid_pos.iComp:.2f} D:{velo_outer_pid_pos.dComp:.2f}", (155,150,200)))
-            renderings.append(WriteLine(f"INNER PID P: P:{velo_inner_pid_pos.pComp:.2f} I:{velo_inner_pid_pos.iComp:.2f} D:{velo_inner_pid_pos.dComp:.2f}", (155,150,200)))
-        
-        renderings.append(WriteLine(f"EFFECTIVE: X:{accel[0]:.2f} Y:{accel[1]:.2f} Z:{accel[2]:.2f}", (205,100,200)))
-        renderings.append(WriteLine(f"INSTANTANEOUS: X:{instaccel[0]:.2f} Y:{instaccel[1]:.2f} Z:{instaccel[2]:.2f}", (205,100,200)))
-        
-        
-        #[accel[0] * scalar, accel[1] * scalar, accel[2] * scalar]
-        render.render([outer_theta, inner_theta], desired, 
-                        [render.vec3D([instaccel[0]*scalar,0,0]), render.vec3D([0,instaccel[1]*scalar,0]), render.vec3D([0,0, instaccel[2]*scalar])], 
-                        renderings)
+        writeFile(f"{elapsed_time}, {inner_theta}, {outer_theta}, {instaccel[0]}, {instaccel[1]}, {instaccel[2]}, {mag3(accel)}\n")
         
         elapsed_time += dt
         if(speed_mult == 1):
             cur_time = time.time()
-            print(cur_time-prev_time)
+            #print(cur_time-prev_time)
             if((cur_time - prev_time) < dt):
                 time.sleep(dt - (cur_time - prev_time))
             prev_time = time.time()
         
-        prevMouse = mouse
+        if(StopAtXSeconds != 0 and elapsed_time > StopAtXSeconds):
+            endPrint()
+            exit()
+        
+        if(doRender and MANUAL_CONTROL):
+            prevMouse = mouse
