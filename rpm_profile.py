@@ -35,10 +35,10 @@ def executeTrajectory(elapsed_time: float, desired_g: float, outer_theta: float,
     return [x, y]
 
 velo_lastChange = 0
-velo_changeDT = 0.3
-velo_angle = 0
-velo_angleCone = 15
-velo_maxVelocity = VELO_MAX
+velo_changeDT = 0.3 #sec
+velo_angle = 0 #degrees
+velo_angleCone = 1 #degrees
+velo_maxVelocity = VELO_MAX #rad/s
 def executeAnshal(elapsed_time: float, desired_g: float):
     global x, y, velo_lastChange, velo_angle, velo_changeDT, velo_angleCone, velo_maxVelocity
     if(elapsed_time > (velo_lastChange + velo_changeDT)):
@@ -53,6 +53,14 @@ def executeJon(elapsed_time: float, desired_g: float):
     norm = norm2([math.pi, math.e])
     return [norm[0]*VELO_MAX, norm[1]*VELO_MAX]
 
-def executeVelo(elapsed_time: float, desired_g: float):
-    return executeAnshal(elapsed_time, desired_g)
+veloJon2_maxVelocity = VELO_MAX
+veloJon2_timePerRotation = 60 * 10 #sec
+def executeJonModified(elapsed_time: float, desired_g: float):
+    velo_angle = 2 * math.pi * (elapsed_time % veloJon2_timePerRotation) / veloJon2_timePerRotation + math.pi
+    x = math.sin(math.radians(velo_angle)) * velo_maxVelocity
+    y = math.cos(math.radians(velo_angle)) * velo_maxVelocity
+    return [x, y]
+
+# def executeVelo(elapsed_time: float, desired_g: float):
+#     return executeAnshal(elapsed_time, desired_g)
     #return [10,10]

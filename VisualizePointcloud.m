@@ -4,11 +4,14 @@
 %T = readmatrix('logs/log_12-05-2025_15_27_53.csv'); %Jon's profile, 1m
 
 %T = readmatrix('logs/log_12-05-2025_17_17_07.csv'); % My profile, 1hr
-T = readmatrix('logs/log_12-05-2025_16_54_58.csv'); % Jon profile, 1hr
+%T = readmatrix('logs/log_12-05-2025_16_54_58.csv'); % Jon profile, 1hr
 
-P = 8000; %number here is how many points we are calculating on
+%T = readmatrix('logs/log_14-05-2025_02_21_16_V_JONMODIFIED_600s_0.733rads.csv'); % Modified jon 2hr
+T = readmatrix('logs/log_14-05-2025_02_33_58_V_JONMODIFIED_600s_0.733rads.csv'); % Modified jon 0.25hr
+
+P = 16000; %number here is how many points we are calculating on
 ColorByIndex = 0; %1 for coloring based on what time these points were hit, as opposed to density
-K = 0.9;%// threshold factor
+K = 0.5;%// threshold factor
 
 n = numel(T(:,2))/P; 
 
@@ -45,5 +48,5 @@ end
 %// plot
 scatter3(x,y,z,20,Z,'filled');
 axis equal;
-colormap(flipud(hot))
+colormap(flipud(cool))
 colorbar;

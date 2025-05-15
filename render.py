@@ -21,8 +21,8 @@ vertices = []
 squares = []
 quads = []
 
-backgroundColor = "#000000"
-frameColor = "#FFFFFF"
+backgroundColor = "#FFFFFF"
+frameColor = "#000000"
 vectorColorX = "#E85F2A"
 vectorColorY = "#5FE82A"
 vectorColorZ = "#2A5FE8"
