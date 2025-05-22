@@ -71,6 +71,7 @@ class PID:
         self.iComp = self.kI * self.sumError
         self.dComp = self.kD * (error - self.prevError)/dt
         return self.pComp + self.iComp + self.dComp
+    
 
 def executePhysics(outer_torque: float, inner_torque: float, delta_time: float):
     global outer_theta, inner_theta, outer_theta_prev, inner_theta_prev, outer_dtheta, inner_dtheta
@@ -124,7 +125,7 @@ def projectionEffectiveG():
     accel = [accumulate_accel[0]/accumulate_count, accumulate_accel[1]/accumulate_count, accumulate_accel[2]/accumulate_count]
     return
 
-POS_PID_ONLY_ENABLED = False
+POS_PID_ONLY_ENABLED = False #NOT RECOMMENDED TO USE
 POS_VELO_PID_ENABLED = False
 VELO_PID_ONLY_ENABLED = True
 
@@ -134,11 +135,13 @@ MANUAL_TORQUE_SCALING = 1
 
 MANUAL_VELO_SCALING = 0.01
 
-doRender = False
+doRender = True
 
-PROFILE_VELO_ANSHAL = True
-PROFILE_VELO_JON = False
-PROFILE_VELO_JONMODIFIED = False
+PROFILE_VELO_ANSHAL = False # SIMPLIFIED RANDOM DIRECTION ALGORITHM
+PROFILE_VELO_ANSHALMODIFIED = False # SIMPLIFIED RANDOM DIRECTION ALGORITHM (WITH ACOS)
+PROFILE_VELO_JON = False # INCOMMENSURABLE NUMBERS ALGORITHM
+PROFILE_VELO_JONMODIFIED = False # CONSISTENTLY CHANGING DIRECTION ALGORITHM
+PROFILE_VELO_BRW = True # BOUNDED RANDOM WALK ALGORITHM
 
 StopAtXSeconds = 60 * 60 * 1 # 1hr
 
@@ -165,7 +168,9 @@ def writeFile(text):
 beginTime = 0
 
 if __name__ == "__main__":
-    if(doRender):
+    rand_seed(0)
+    
+    if(doRender or MANUAL_CONTROL):
         render.init()
     
     print(f"STARTING SIMULATION\nSAMPLING_HZ: {sample_frequency}Hz SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult}\n MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}\n")
@@ -198,27 +203,31 @@ if __name__ == "__main__":
     elif(VELO_PID_ONLY_ENABLED):
         filename += f"_V"
         if(PROFILE_VELO_ANSHAL):
-            filename += f"_ANSH_{rpm_profile.velo_changeDT*100}ms_{rpm_profile.velo_angleCone}deg_{rpm_profile.velo_maxVelocity}rads"
+            filename += f"_ANSH_{rpm_profile.veloAnshal_changeDT*100}ms_{rpm_profile.veloAnshal_angleCone}deg_{rpm_profile.veloAnshal_maxVelocity}rads"
+        elif(PROFILE_VELO_ANSHALMODIFIED):
+            filename += f"_ANSHMODIFIED_{rpm_profile.veloAnshal_changeDT*100}ms_{rpm_profile.veloAnshal_angleCone}deg_{rpm_profile.veloAnshal_maxVelocity}rads"
         elif(PROFILE_VELO_JON):
-            filename += "_JON"
+            filename += f"_JON_{rpm_profile.veloJon2_maxVelocity}rads"
         elif(PROFILE_VELO_JONMODIFIED):
             filename += f"_JONMODIFIED_{rpm_profile.veloJon2_timePerRotation}s_{rpm_profile.veloJon2_maxVelocity}rads"
+        elif(PROFILE_VELO_BRW):
+            filename += f"_BRW_{rpm_profile.veloJon2_timePerRotation}_{rpm_profile.veloBRW_coneAngle}rad_{rpm_profile.veloBRW_coneLength}len_{rpm_profile.veloBRW_maxVelocity}rads"
         else:
-            print("NO PROFILE SELECTED, SET ONE OF THE THREE PROFILE_VELO_ VARIABLES TO TRUE")
+            print("NO PROFILE SELECTED, SET ONE OF THE PROFILE_VELO_ VARIABLES TO TRUE")
             exit(-5)
     else:
         print("NO MODE SELECTED, SET ONE OF THE THREE _ENABLED VARIABLES TO TRUE")
         exit(-3)
+    
+    #filename += f"-{VELO_MAX}RADs-"
     
     if(MANUAL_CONTROL):
         filename += "_MAN"
     
     writeFile("time (ms), inner (rad), outer (rad), accel_x, accel_y, accel_z, accel_effective\n")
     
-    rpm_profile.seed(0)
-    
     while(1):
-        if(doRender and MANUAL_CONTROL):
+        if(doRender or MANUAL_CONTROL):
             mouse = pygame.mouse.get_pressed(num_buttons=3)
         
         prev_outer_omega = (outer_theta - prev_outer_theta)/dt
@@ -227,8 +236,10 @@ if __name__ == "__main__":
         prev_outer_theta = outer_theta
         prev_inner_theta = inner_theta
         
+        renderPts = []
+        
         if(POS_PID_ONLY_ENABLED):
-            if(doRender and MANUAL_CONTROL):
+            if(MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0] and prevMouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -246,7 +257,7 @@ if __name__ == "__main__":
             inner_torque = inner_pid_pos.calculate(desired_inner_theta, inner_theta, dt)
             executePhysics(outer_torque, inner_torque, dt)
         elif(POS_VELO_PID_ENABLED):
-            if(doRender and MANUAL_CONTROL):
+            if(MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0] and prevMouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -258,13 +269,16 @@ if __name__ == "__main__":
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
             else:
-                desired_outer_theta, desired_inner_theta = rpm_profile.executePos(elapsed_time, 0.0)
+                #desired_outer_theta, desired_inner_theta = rpm_profile.executePos(elapsed_time, 0.0)
                 
-            desired_outer_omega = cascade_outer_pid_pos.calculate(desired_outer_theta, outer_theta, dt)
-            desired_inner_omega = cascade_outer_pid_pos.calculate(desired_inner_theta, inner_theta, dt)
+                #it goes azimuth, elevation, and inner is azimuth and outer is elevation so inner, outer on the input
+                desired_outer_theta, desired_inner_theta, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                #print(renderPts)
+            desired_outer_omega = cascade_outer_pid_pos.calculate(delta(outer_theta, desired_outer_theta, 2*math.pi), 0, dt)
+            desired_inner_omega = cascade_outer_pid_pos.calculate(delta(inner_theta, desired_inner_theta, 2*math.pi), 0, dt)
+            
             mag = mag2([desired_outer_omega, desired_inner_omega])
-            # desired_outer_omega = max(-VELO_MAX, min(VELO_MAX, desired_outer_omega))
-            # desired_inner_omega = max(-VELO_MAX, min(VELO_MAX, desired_inner_omega))
+
             if(mag != 0):
                 desired_outer_omega = desired_outer_omega * VELO_MAX/mag
                 desired_inner_omega = desired_inner_omega * VELO_MAX/mag
@@ -275,7 +289,7 @@ if __name__ == "__main__":
         elif(VELO_PID_ONLY_ENABLED):
             desired_outer_omega = 0
             desired_inner_omega = 0
-            if(doRender and MANUAL_CONTROL):
+            if(MANUAL_CONTROL):
                 mouse_pos = pygame.mouse.get_pos()
                 if(mouse[0]):
                     disp = [mouse_pos[0] - dragPos[0][0], mouse_pos[1] - dragPos[0][1]]
@@ -286,10 +300,14 @@ if __name__ == "__main__":
             else:
                 if(PROFILE_VELO_ANSHAL):
                     desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshal(elapsed_time, 0.0)
+                elif(PROFILE_VELO_ANSHALMODIFIED):
+                    desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshalModified(elapsed_time, 0.0)
                 elif(PROFILE_VELO_JON):
                     desired_outer_omega, desired_inner_omega = rpm_profile.executeJon(elapsed_time, 0.0)
                 elif(PROFILE_VELO_JONMODIFIED):
                     desired_outer_omega, desired_inner_omega = rpm_profile.executeJonModified(elapsed_time, 0.0)
+                elif(PROFILE_VELO_BRW):
+                    desired_outer_omega, desired_inner_omega, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
                 else:
                     print("SHOULD NEVER REACH")
                     exit(-6)
@@ -309,7 +327,7 @@ if __name__ == "__main__":
         projectionEffectiveG()
         
         #print(f"[POST_CYCLE_SUMMARY {elapsed_time:.2f}s] OUTER: {outer_theta:.2f}/{fmod(outer_theta,2*math.pi):.2f} INNER: {inner_theta:.2f}/{fmod(inner_theta,2*math.pi):.2f} OUTER': {outer_dtheta:.2f} INNER': {inner_dtheta:.2f}")
-        if(doRender):
+        if(doRender or MANUAL_CONTROL):
             renderings = [
             WriteLine(f"SAMPLING_HZ: {sample_frequency} SAMPLING_PERIOD: {dt}s SPEED_MULT: {speed_mult} MOI (kgm^2): OUTER: {OUTER_MOI} INNER: {INNER_MOI}", (255,255,255)),
             WriteLine(f"ELAPSED TIME: {elapsed_time:.2f}s", (200,55,200)),
@@ -343,7 +361,7 @@ if __name__ == "__main__":
         
             render.render([outer_theta, inner_theta], desired, 
                 [render.vec3D(accel, [0,0,0], 9.81, False)], 
-                renderings)
+                renderings, renderPts)
         
         writeFile(f"{elapsed_time:.2f}, {inner_theta:.6f}, {outer_theta:.6f}, {instaccel[0]:.6f}, {instaccel[1]:.6f}, {instaccel[2]:.6f}, {mag3(accel):.6f}\n")
         
@@ -359,7 +377,7 @@ if __name__ == "__main__":
             endPrint()
             exit()
         
-        if(doRender and MANUAL_CONTROL):
+        if(doRender or MANUAL_CONTROL):
             prevMouse = mouse
             
         if(StopAtXSeconds != 0 and int(elapsed_time*100) == int(elapsed_time)*100 and int(elapsed_time) % 60 == 0):
