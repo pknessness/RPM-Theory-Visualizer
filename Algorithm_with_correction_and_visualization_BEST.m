@@ -1,4 +1,4 @@
-%% Full Standalone Trajectory Generation and Visualization Script
+    %% Full Standalone Trajectory Generation and Visualization Script
 clc; clear; close all;
 
 %% PARAMETERS

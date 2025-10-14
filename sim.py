@@ -109,7 +109,7 @@ def executePhysics(outer_torque: float, inner_torque: float, delta_time: float):
 def executeGCalcs():
     global instaccel
     instaccel = [0,-1.0, 0]
-        
+    
     instaccel = render.rotateX(instaccel, outer_theta)
     instaccel = render.rotateY(instaccel, -inner_theta)
     return
@@ -126,8 +126,8 @@ def projectionEffectiveG():
     return
 
 POS_PID_ONLY_ENABLED = False #NOT RECOMMENDED TO USE
-POS_VELO_PID_ENABLED = False
-VELO_PID_ONLY_ENABLED = True
+POS_VELO_PID_ENABLED = True
+VELO_PID_ONLY_ENABLED = False
 
 MANUAL_CONTROL = False
 MANUAL_POS_SCALING = 0.01
@@ -140,10 +140,14 @@ doRender = True
 PROFILE_VELO_ANSHAL = False # SIMPLIFIED RANDOM DIRECTION ALGORITHM
 PROFILE_VELO_ANSHALMODIFIED = False # SIMPLIFIED RANDOM DIRECTION ALGORITHM (WITH ACOS)
 PROFILE_VELO_JON = False # INCOMMENSURABLE NUMBERS ALGORITHM
-PROFILE_VELO_JONMODIFIED = False # CONSISTENTLY CHANGING DIRECTION ALGORITHM
-PROFILE_VELO_BRW = True # BOUNDED RANDOM WALK ALGORITHM
+PROFILE_VELO_JONMODIFIED = False # CONSISTENTLY CHANGING (Cycloidal) DIRECTION ALGORITHM
+PROFILE_VELO_BRW = False # BOUNDED RANDOM WALK ALGORITHM
+PROFILE_VELO_CLINOSTAT = False # CLINOSTAT ONE AXIS OF MOVEMENT
 
-StopAtXSeconds = 60 * 60 * 1 # 1hr
+PROFILE_POS_BRW = True # BOUNDED RANDOM WALK ALGORITHM POSITION STYLE
+
+
+StopAtXSeconds = 60 * 60 * 0.5 # 1hr
 
 filename = "blank"
 
@@ -167,8 +171,10 @@ def writeFile(text):
 
 beginTime = 0
 
+SEED = 0
+
 if __name__ == "__main__":
-    rand_seed(0)
+    rand_seed(SEED)
     
     if(doRender or MANUAL_CONTROL):
         render.init()
@@ -211,7 +217,11 @@ if __name__ == "__main__":
         elif(PROFILE_VELO_JONMODIFIED):
             filename += f"_JONMODIFIED_{rpm_profile.veloJon2_timePerRotation}s_{rpm_profile.veloJon2_maxVelocity}rads"
         elif(PROFILE_VELO_BRW):
-            filename += f"_BRW_{rpm_profile.veloJon2_timePerRotation}_{rpm_profile.veloBRW_coneAngle}rad_{rpm_profile.veloBRW_coneLength}len_{rpm_profile.veloBRW_maxVelocity}rads"
+            filename += f"_BRW_{rpm_profile.veloBRW_changeDT * 1000:.0f}ms_{rpm_profile.veloBRW_coneAngle:.3f}rad_{rpm_profile.veloBRW_coneLength}len_{rpm_profile.veloBRW_maxVelocity}rads"
+        elif(PROFILE_VELO_CLINOSTAT):
+            filename += f"_CLINOSTAT_{rpm_profile.veloClinostat_maxVelocity * 1000:.0f}rads"
+        elif(PROFILE_VELO_BRW):
+            filename += f"_POSBRW_{rpm_profile.posBRW_changeDT * 1000:.0f}ms_{rpm_profile.posBRW_coneAngle:.3f}rad_{rpm_profile.posBRW_coneLength}len_{rpm_profile.posBRW_maxVelocity}rads"
         else:
             print("NO PROFILE SELECTED, SET ONE OF THE PROFILE_VELO_ VARIABLES TO TRUE")
             exit(-5)
@@ -223,6 +233,8 @@ if __name__ == "__main__":
     
     if(MANUAL_CONTROL):
         filename += "_MAN"
+        
+    filename += f"_SEED{SEED}"
     
     writeFile("time (ms), inner (rad), outer (rad), accel_x, accel_y, accel_z, accel_effective\n")
     
@@ -274,6 +286,12 @@ if __name__ == "__main__":
                 #it goes azimuth, elevation, and inner is azimuth and outer is elevation so inner, outer on the input
                 desired_outer_theta, desired_inner_theta, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
                 #print(renderPts)
+                
+                if(PROFILE_POS_BRW):
+                    desired_outer_theta, desired_inner_theta, renderPts = rpm_profile.executeBoundedRandomPosition(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                else:
+                    print("SHOULD NEVER REACH")
+                    exit(-6)
             desired_outer_omega = cascade_outer_pid_pos.calculate(delta(outer_theta, desired_outer_theta, 2*math.pi), 0, dt)
             desired_inner_omega = cascade_outer_pid_pos.calculate(delta(inner_theta, desired_inner_theta, 2*math.pi), 0, dt)
             
@@ -308,6 +326,8 @@ if __name__ == "__main__":
                     desired_outer_omega, desired_inner_omega = rpm_profile.executeJonModified(elapsed_time, 0.0)
                 elif(PROFILE_VELO_BRW):
                     desired_outer_omega, desired_inner_omega, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                elif(PROFILE_VELO_CLINOSTAT):
+                    desired_outer_omega, desired_inner_omega = rpm_profile.executeClinostat(elapsed_time, 0.0)
                 else:
                     print("SHOULD NEVER REACH")
                     exit(-6)
@@ -374,6 +394,7 @@ if __name__ == "__main__":
         prev_time = time.time()
         
         if(StopAtXSeconds != 0 and elapsed_time > StopAtXSeconds):
+            flushBuffer()
             endPrint()
             exit()
         

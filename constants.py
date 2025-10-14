@@ -24,7 +24,15 @@ FRAME_THICKNESS = 2.0
 VECTOR_BOX = 1
 
 #profile (rad/s)
-VELO_MAX = 0.733#3.14159#1.57#0.733 
+
+# VELO_MAX = 0.785
+# VELO_MAX = 1.57
+VELO_MAX = 3.14159
+
+#0.733 rads = 7RPM
+#0.785 rads = 7.5RPM
+#1.571 rads = 15RPM
+#3.142 rads = 30RPM
 
 def rand_seed(seed: int):
     random.seed(seed)

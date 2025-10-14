@@ -10,7 +10,9 @@
 %T = readmatrix('logs/log_14-05-2025_02_33_58_V_JONMODIFIED_600s_0.733rads.csv'); % Modified jon 0.25hr
 
 %T = readmatrix('logs/log_20-05-2025_01_58_02_V_ANSHMODIFIED_30.0ms_1deg_0.733rads-0.733RADs-.csv');
-T = readmatrix('logs/log_20-05-2025_21_41_23_V_BRW_600_0.08726646259971647rad_0.1len_0.733rads.csv');
+%T = readmatrix('logs/log_20-05-2025_21_41_23_V_BRW_600_0.08726646259971647rad_0.1len_0.733rads.csv');
+
+T = readmatrix('logs/log_16-07-2025_17_57_19_V_BRW_100ms_0.262rad_0.15len_0.785rads_SEED0.csv');
 
 
 P = 8000; %number here is how many points we are calculating on
@@ -51,6 +53,7 @@ end
 
 %// plot
 scatter3(x,y,z,20,Z,'filled');
+%scatter3(x,y,z);
 axis equal;
 colormap(flipud(cool))
 colorbar;

@@ -5,7 +5,7 @@ g = 9.81;                        % gravitational acceleration (m/s^2)
 r_worst_case = 6*0.0254;         % worst-case radius (m)
 runtime = 24;                    % runtime in hours (for DT calculation)
 N_SIM = 10000;                    % number of simulation steps
-LENGTH_R = 1e6;                  % number of random candidate points (reduced for efficiency)
+LENGTH_R = 1e5;                  % number of random candidate points (reduced for efficiency)
 MAX_ANGLE_DEG = 30;              % maximum allowed deviation angle (degrees)
 MAX_COS_ANGLE = cosd(MAX_ANGLE_DEG);
 DS = 0.1;                        % fixed step length (m)
@@ -139,33 +139,33 @@ fprintf('→ Effective‑g (vector‑avg): %.5f m/s² (%.5f g)\n', ...
         g_eff_vecavg, g_eff_vecavg/g);
 
 %% FIGURE 1: Full Sphere with Trajectory & Cones
-% figure;
-% [sx,sy,sz] = sphere(50);
-% surf(sx,sy,sz,'FaceAlpha',0.1,'EdgeColor','none');
-% colormap([0.8 0.8 0.8]); hold on;
-% hSc = scatter3(r(1,1:500:end),r(2,1:500:end),r(3,1:500:end),5,'b','filled');
-% if isprop(hSc,'MarkerFaceAlpha'); hSc.MarkerFaceAlpha=0.3; end
-% nShow = min(50, size(trajectory,2)-1);
-% for i = 1:nShow
-%     p1 = trajectory(:,i); p2 = trajectory(:,i+1);
-%     plot3([p1(1) p2(1)],[p1(2) p2(2)],[p1(3) p2(3)],'r-','LineWidth',2);
-%     % draw cone region
-%     apex = p1; orient = candidateOrientations(:,i);
-%     len = DS; rcone = len*tan(deg2rad(MAX_ANGLE_DEG));
-%     B = null(orient');
-%     u1=B(:,1); u2=B(:,2);
-%     theta = linspace(0,2*pi,50);
-%     pts = apex + orient*len + rcone*(u1*cos(theta)+u2*sin(theta));
-%     plot3(pts(1,:),pts(2,:),pts(3,:),'m-','LineWidth',1.2);
-%     for j=1:10:length(theta)
-%         plot3([apex(1) pts(1,j)],[apex(2) pts(2,j)],[apex(3) pts(3,j)],'m--');
-%     end
-% end
-% xlabel('X'); ylabel('Y'); zlabel('Z');
-% title('Full Sphere with First 50 Trajectory Points & Cones');
-% axis equal; grid on; hold off;
-% 
-% %% FIGURE 2: RPM Frame Schematic
+figure;
+[sx,sy,sz] = sphere(50);
+surf(sx,sy,sz,'FaceAlpha',0.1,'EdgeColor','none');
+colormap([0.8 0.8 0.8]); hold on;
+hSc = scatter3(r(1,1:500:end),r(2,1:500:end),r(3,1:500:end),5,'b','filled');
+if isprop(hSc,'MarkerFaceAlpha'); hSc.MarkerFaceAlpha=0.3; end
+nShow = min(500, size(trajectory,2)-1);
+for i = 1:nShow
+    p1 = trajectory(:,i); p2 = trajectory(:,i+1);
+    plot3([p1(1) p2(1)],[p1(2) p2(2)],[p1(3) p2(3)],'r-','LineWidth',2);
+    % draw cone region
+    apex = p1; orient = candidateOrientations(:,i);
+    len = DS; rcone = len*tan(deg2rad(MAX_ANGLE_DEG));
+    B = null(orient');
+    u1=B(:,1); u2=B(:,2);
+    theta = linspace(0,2*pi,50);
+    pts = apex + orient*len + rcone*(u1*cos(theta)+u2*sin(theta));
+    plot3(pts(1,:),pts(2,:),pts(3,:),'m-','LineWidth',1.2);
+    for j=1:10:length(theta)
+        plot3([apex(1) pts(1,j)],[apex(2) pts(2,j)],[apex(3) pts(3,j)],'m--');
+    end
+end
+xlabel('X'); ylabel('Y'); zlabel('Z');
+title('Full Sphere with First 50 Trajectory Points & Cones');
+axis equal; grid on; hold off;
+
+%% FIGURE 2: RPM Frame Schematic
 % if size(trajectory,2)>=51
 %     target = trajectory(:,51);
 % else
