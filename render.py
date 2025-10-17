@@ -108,6 +108,13 @@ def rotateX(vertex, angle):
     v2 = [vertex[0], vertex[1] * cs - vertex[2] * sn, vertex[1] * sn + vertex[2] * cs]
     return v2
 
+# 0 1 0
+# 0 cos(angle) sin(angle) (X)
+
+# 0 1 0
+# -sin(angle) cos(angle) 0 (Z)
+# -sin(angle) cos(angle)cos(angle2) cos(angle)sin(angle2) (ZX)
+
 def rotateY(vertex, angle):
     cs = fcos(angle)
     sn = fsin(angle)

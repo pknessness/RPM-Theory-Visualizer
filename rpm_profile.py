@@ -118,7 +118,7 @@ posBRW_lastChange = 0
 posBRW_changeDT = 0.02 #sec
 posBRW_pts = []
 posBRW_maxVelocity = VELO_MAX
-posBRW_coneAngle = 5 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
+posBRW_coneAngle = 15 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
 posBRW_coneLength = 0.55
 posBRW_coneMinLength = 0.1 
 for i in range(50000):
@@ -154,5 +154,12 @@ def executeBoundedRandomPosition(elapsed_time: float, desired_g: float, pos_sph:
             x, y = desired
             #print(x, y)
             #x, y = v2Scale([x, y], posBRW_maxVelocity)
+        else:
+            v = v3Sub(pos_cart, prev_pos_cart)
+            pos_cart += norm3(v3Scale(v, 5))
+            x, y = cart2sph(pos_cart[0], pos_cart[1], pos_cart[2])
     posBRW_prevPos = pos_sph
     return [x,y,posBRW_pointsInRange]
+
+def manualPoint(elapsed_time: float, desired_g: float, pos_sph: list):
+    return [sph2cart(*pos_sph)]

@@ -129,7 +129,7 @@ POS_PID_ONLY_ENABLED = False #NOT RECOMMENDED TO USE
 POS_VELO_PID_ENABLED = True
 VELO_PID_ONLY_ENABLED = False
 
-MANUAL_CONTROL = False
+MANUAL_CONTROL = True
 MANUAL_POS_SCALING = 0.01
 MANUAL_TORQUE_SCALING = 1
 
@@ -280,6 +280,8 @@ if __name__ == "__main__":
                         
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
+                renderPts = rpm_profile.manualPoint(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+
             else:
                 #desired_outer_theta, desired_inner_theta = rpm_profile.executePos(elapsed_time, 0.0)
                 
@@ -315,6 +317,7 @@ if __name__ == "__main__":
                     desired_inner_omega = disp[0] * MANUAL_VELO_SCALING
                 else:
                     dragPos[0] = mouse_pos
+                renderPts = rpm_profile.manualPoint(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
             else:
                 if(PROFILE_VELO_ANSHAL):
                     desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshal(elapsed_time, 0.0)
