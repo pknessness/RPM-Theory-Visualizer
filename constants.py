@@ -216,3 +216,20 @@ def v3Angle(a: list, b: list):
     B = norm3(b)
     dotP = A[0] * B[0] + A[1] * B[1] + A[2] * B[2]
     return math.acos(dotP)
+
+def v3Dot(a: list, b: list):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+def v3Cross(a, b):
+    return [a[1]*b[2] - a[2]*b[1],
+            a[2]*b[0] - a[0]*b[2],
+            a[0]*b[1] - a[1]*b[0]]
+
+def rotateX(vertex, angle):
+    cs = math.cos(angle)
+    sn = math.sin(angle)
+    v2 = [vertex[0], 
+          vertex[1] * cs - vertex[2] * sn, 
+          vertex[1] * sn + vertex[2] * cs
+         ]
+    return v2

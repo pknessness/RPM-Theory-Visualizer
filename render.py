@@ -236,12 +236,55 @@ def setup2():
     createRect([0,0,0],15,15,15)
     createRect([0,0,0],2,2,2)
 
+def createWireframeSphere(center, radius, lat_lines=12, lon_lines=16):
+    """Create a wireframe sphere using latitude and longitude lines"""
+    import math
+    
+    # Draw latitude lines (circles parallel to equator)
+    for i in range(lat_lines):
+        phi = math.pi * (i / lat_lines) - math.pi/2  # from -pi/2 to pi/2
+        r = radius * math.cos(phi)  # radius of this latitude circle
+        z = radius * math.sin(phi)  # height of this latitude circle
+        
+        # Create circle at this latitude
+        points = []
+        segments = lon_lines * 2
+        for j in range(segments + 1):
+            theta = 2 * math.pi * j / segments
+            x = r * math.cos(theta)
+            y = r * math.sin(theta)
+            points.append([center[0] + x, center[1] + y, center[2] + z])
+        
+        # Connect consecutive points
+        for j in range(len(points) - 1):
+            addSquare(points[j], points[j+1], points[j+1], points[j])
+    
+    # Draw longitude lines (circles through poles)
+    for i in range(lon_lines):
+        theta = 2 * math.pi * i / lon_lines
+        
+        # Create semicircle through poles
+        points = []
+        segments = lat_lines * 2
+        for j in range(segments + 1):
+            phi = math.pi * j / segments - math.pi/2  # from -pi/2 to pi/2
+            x = radius * math.cos(phi) * math.cos(theta)
+            y = radius * math.cos(phi) * math.sin(theta)
+            z = radius * math.sin(phi)
+            points.append([center[0] + x, center[1] + y, center[2] + z])
+        
+        # Connect consecutive points
+        for j in range(len(points) - 1):
+            addSquare(points[j], points[j+1], points[j+1], points[j])
+
 angle = 0
 renderPointsIndex = 0
 renderPointsPer = 500
+look_trail = []  # Stores the path history of the look vector
+max_trail_length = 500  # Maximum number of trail points to keep
 
 def render(actual: list, desired: list, vectors: list[vec3D], text: list, points: list):
-    global x, cameraDir, projectionPanelPos, angle, fov, zoomFactor, renderPointsIndex, renderPointsPer
+    global x, cameraDir, projectionPanelPos, angle, fov, zoomFactor, renderPointsIndex, renderPointsPer, look_trail
     global vertices, squares, quads
     
     screen.fill(backgroundColor)
@@ -279,6 +322,8 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list, points
         renderPointsPer = 100000
     else:
         renderPointsPer = 500
+    if keys[K_c]:
+        look_trail.clear()  # Clear the trail when C is pressed
     
     if(type(desired) == list):
         # Update DESIRED
@@ -394,6 +439,96 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list, points
     
     # print(zoomFactor)
     cloudR = 55
+    
+    # Draw 'look' vector: where the RPM is pointing on the unit sphere
+    # The gravity vector points down in the RPM's local frame (0, -1, 0)
+    # After rotations, it shows where on the sphere the RPM is currently "looking"
+    # This matches the point cloud cone logic in rpm_profile.py
+    from constants import sph2cart
+    
+    # Convert the actual position (inner_theta=azimuth, outer_theta=elevation) to Cartesian
+    # actual[1] = inner_theta, actual[0] = outer_theta
+    look_cart = sph2cart(actual[1], actual[0])
+    
+    # Add current look position to trail (before rotation)
+    look_trail.append(look_cart.copy())
+    if len(look_trail) > max_trail_length:
+        look_trail.pop(0)  # Remove oldest point
+    
+    # Apply scene rotation for visualization
+    look = rotateZ(look_cart, angle)
+
+    # place the look point on the unit sphere scaled to cloudR (same radius used for points)
+    look_point_world = [look[0] * cloudR, look[1] * cloudR, look[2] * cloudR]
+
+    # project to screen
+    w, h = pygame.display.get_window_size()
+    scale = h/projectionPanelHeight
+    pt = pointToProjected(look_point_world)
+
+    # draw a line from origin to look point and a small filled circle at the tip
+    origin_projected = pointToProjected([0,0,0])
+    pygame.draw.line(screen, (255, 0, 0), (origin_projected[0] * scale + w/2, origin_projected[1] * scale + h/2), (pt[0] * scale + w/2, pt[1] * scale + h/2), 2)
+    pygame.draw.circle(screen, (255, 0, 0), (int(pt[0] * scale + w/2), int(pt[1] * scale + h/2)), 5)
+    
+    # Draw the trail path on the sphere surface
+    if len(look_trail) > 1:
+        trail_points_2d = []
+        for trail_pt in look_trail:
+            rotated_trail = rotateZ(trail_pt, angle)
+            trail_world = [rotated_trail[0] * cloudR, rotated_trail[1] * cloudR, rotated_trail[2] * cloudR]
+            trail_2d = pointToProjected(trail_world)
+            trail_points_2d.append([trail_2d[0] * scale + w/2, trail_2d[1] * scale + h/2])
+        
+        # Draw the trail as connected lines with gradient color (older = more transparent)
+        for i in range(len(trail_points_2d) - 1):
+            # Calculate alpha based on position in trail (newer = more opaque)
+            alpha = int(100 + (155 * i / len(trail_points_2d)))  # 100 to 255
+            trail_color = (255, 100, 100, alpha)  # Reddish trail
+            pygame.draw.line(screen, trail_color, trail_points_2d[i], trail_points_2d[i+1], 2)
+    
+    # Draw translucent wireframe sphere - optimized version using direct line drawing
+    sphere_color = (170, 170, 170, 100)  # Light gray with some transparency
+    lat_lines = 6
+    lon_lines = 8
+    
+    import math
+    # Draw latitude lines
+    for i in range(1, lat_lines):  # Skip poles
+        phi = math.pi * (i / lat_lines) - math.pi/2
+        r = cloudR * math.cos(phi)
+        z = cloudR * math.sin(phi)
+        
+        points_2d = []
+        segments = lon_lines * 2
+        for j in range(segments + 1):
+            theta = 2 * math.pi * j / segments
+            x = r * math.cos(theta)
+            y = r * math.sin(theta)
+            pt_3d = rotateZ([x, y, z], angle)
+            pt_2d = pointToProjected(pt_3d)
+            points_2d.append([pt_2d[0] * scale + w/2, pt_2d[1] * scale + h/2])
+        
+        for j in range(len(points_2d) - 1):
+            pygame.draw.line(screen, sphere_color, points_2d[j], points_2d[j+1], 1)
+    
+    # Draw longitude lines
+    for i in range(lon_lines):
+        theta = 2 * math.pi * i / lon_lines
+        points_2d = []
+        segments = lat_lines * 2
+        for j in range(segments + 1):
+            phi = math.pi * j / segments - math.pi/2
+            x = cloudR * math.cos(phi) * math.cos(theta)
+            y = cloudR * math.cos(phi) * math.sin(theta)
+            z = cloudR * math.sin(phi)
+            pt_3d = rotateZ([x, y, z], angle)
+            pt_2d = pointToProjected(pt_3d)
+            points_2d.append([pt_2d[0] * scale + w/2, pt_2d[1] * scale + h/2])
+        
+        for j in range(len(points_2d) - 1):
+            pygame.draw.line(screen, sphere_color, points_2d[j], points_2d[j+1], 1)
+    
     ind = 0
     while(renderPointsIndex < len(points) and ind < renderPointsPer):
         point = points[renderPointsIndex]
