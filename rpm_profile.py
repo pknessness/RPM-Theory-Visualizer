@@ -109,7 +109,7 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             veloBRW_pts.append(generateUniformSpherePoint())
             #print(f"P:{} D:{} A:{}")
             x, y = norm2(v2Sub(desired, pos_sph))
-            print(x, y)
+            # print(x, y)
             x, y = v2Scale([x, y], veloBRW_maxVelocity)
         else:
             print("no points found")
@@ -287,7 +287,7 @@ posBRW_maxVelocity = VELO_MAX
 posBRW_coneAngle = 5 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
 posBRW_coneLength = 0.55
 posBRW_coneMinLength = 0.1 
-for i in range(50000):
+for i in range(100000):
     posBRW_pts.append(generateUniformSpherePoint())
     #veloBRW_pts.append(generateWeightedSpherePoint(1))
 
