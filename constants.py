@@ -54,22 +54,39 @@ def norm3(vec: list):
     magn = mag3(vec)
     return [vec[0]/magn, vec[1]/magn, vec[2]/magn]
 
-def sph2cart(theta: float, phi: float):
+def sph2cart(phi: float, theta: float):
     #theta azimuth, phi elevation
     #print([theta, phi], math.sin(phi), math.cos(phi), math.sin(theta), math.cos(theta))
-    x1 = math.cos(phi) * math.cos(theta)
-    y1 = math.cos(phi) * math.sin(theta)
-    z1 = math.sin(phi)
+    x1 = math.cos(2 * math.pi - phi) * math.cos(theta)
+    y1 = math.cos(2 * math.pi - phi) * math.sin(theta)
+    z1 = math.sin(2 * math.pi - phi)
     #print([theta, phi], [x1, y1, z1])
-    return [x1, y1, z1]
+    return [z1, x1, y1]
 
-def cart2sph(x: float, y: float, z: float):
+def cart2sph(z: float, x: float, y: float):
     #theta azimuth, phi elevation
     #theta = math.acos(z)
     #phi = math.acos(x / math.sqrt(x*x + y*y))
     theta = math.atan2(y, x)
     phi = math.atan2(z, math.sqrt(x*x + y*y))
-    return [theta, phi]
+    return [2 * math.pi - phi, theta]
+
+# def sph2cart(theta: float, phi: float):
+#     #theta azimuth, phi elevation
+#     #print([theta, phi], math.sin(phi), math.cos(phi), math.sin(theta), math.cos(theta))
+#     x1 = math.cos(-phi) * math.cos(theta)
+#     y1 = math.cos(-phi) * math.sin(theta)
+#     z1 = math.sin(-phi)
+#     #print([theta, phi], [x1, y1, z1])
+#     return [x1, y1, z1]
+
+# def cart2sph(x: float, y: float, z: float):
+#     #theta azimuth, phi elevation
+#     #theta = math.acos(z)
+#     #phi = math.acos(x / math.sqrt(x*x + y*y))
+#     theta = math.atan2(y, x)
+#     phi = math.atan2(z, math.sqrt(x*x + y*y))
+#     return [theta, phi]
 
 class WriteLine:
     def __init__(self, text, color):

@@ -129,7 +129,7 @@ POS_PID_ONLY_ENABLED = False #NOT RECOMMENDED TO USE
 POS_VELO_PID_ENABLED = False
 VELO_PID_ONLY_ENABLED = True
 
-MANUAL_CONTROL = False
+MANUAL_CONTROL = True
 MANUAL_POS_SCALING = 0.01
 MANUAL_TORQUE_SCALING = 1
 
@@ -259,6 +259,17 @@ if __name__ == "__main__":
                     desired_inner_theta += disp[0] * MANUAL_POS_SCALING
                 if(mouse[0]):
                     dragPos[0] = mouse_pos
+                
+                # Keyboard controls
+                if 'manual_keys' in locals():
+                    if manual_keys['inner_left']:
+                        desired_inner_theta -= MANUAL_POS_SCALING * 5
+                    if manual_keys['inner_right']:
+                        desired_inner_theta += MANUAL_POS_SCALING * 5
+                    if manual_keys['outer_up']:
+                        desired_outer_theta += MANUAL_POS_SCALING * 5
+                    if manual_keys['outer_down']:
+                        desired_outer_theta -= MANUAL_POS_SCALING * 5
                     
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
@@ -277,6 +288,17 @@ if __name__ == "__main__":
                     desired_inner_theta += disp[0] * MANUAL_POS_SCALING
                 if(mouse[0]):
                     dragPos[0] = mouse_pos
+                
+                # Keyboard controls
+                if 'manual_keys' in locals():
+                    if manual_keys['inner_left']:
+                        desired_inner_theta -= MANUAL_POS_SCALING * 5
+                    if manual_keys['inner_right']:
+                        desired_inner_theta += MANUAL_POS_SCALING * 5
+                    if manual_keys['outer_up']:
+                        desired_outer_theta += MANUAL_POS_SCALING * 5
+                    if manual_keys['outer_down']:
+                        desired_outer_theta -= MANUAL_POS_SCALING * 5
                         
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
@@ -315,6 +337,17 @@ if __name__ == "__main__":
                     desired_inner_omega = disp[0] * MANUAL_VELO_SCALING
                 else:
                     dragPos[0] = mouse_pos
+                
+                # Keyboard controls
+                if 'manual_keys' in locals():
+                    if manual_keys['inner_left']:
+                        desired_inner_omega += MANUAL_VELO_SCALING * 300
+                    if manual_keys['inner_right']:
+                        desired_inner_omega -= MANUAL_VELO_SCALING * 300
+                    if manual_keys['outer_up']:
+                        desired_outer_omega += MANUAL_VELO_SCALING * 300
+                    if manual_keys['outer_down']:
+                        desired_outer_omega -= MANUAL_VELO_SCALING * 300
             else:
                 if(PROFILE_VELO_ANSHAL):
                     desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshal(elapsed_time, 0.0)
@@ -379,7 +412,7 @@ if __name__ == "__main__":
             #                 [render.vec3D(instaccel, [0,0,0], 9.81, False)], 
             #                 renderings)
         
-            render.render([outer_theta, inner_theta], desired, 
+            manual_keys = render.render([outer_theta, inner_theta], desired, 
                 [render.vec3D(accel, [0,0,0], 9.81, False)], 
                 renderings, renderPts)
         

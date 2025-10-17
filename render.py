@@ -325,6 +325,14 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list, points
     if keys[K_c]:
         look_trail.clear()  # Clear the trail when C is pressed
     
+    # Manual control keys - store for return
+    manual_keys = {
+        'inner_left': keys[K_j],      # J key - left
+        'inner_right': keys[K_l],     # L key - right
+        'outer_up': keys[K_i],        # I key - up
+        'outer_down': keys[K_k]       # K key - down
+    }
+    
     if(type(desired) == list):
         # Update DESIRED
         vertices = []
@@ -552,6 +560,8 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list, points
     
     pygame.display.flip()
     fpsClock.tick(fps)
+    
+    return manual_keys
 
 x_omega_prev = 0
 y_omega_prev = 0   
