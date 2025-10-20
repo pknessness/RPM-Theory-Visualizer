@@ -75,7 +75,7 @@ veloBRW_lastChange = 0
 veloBRW_changeDT = 1 #sec
 veloBRW_pts = []
 veloBRW_maxVelocity = VELO_MAX
-veloBRW_coneAngle = 60 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
+veloBRW_coneAngle = 10 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
 veloBRW_coneLength = 0.55
 veloBRW_coneMinLength = 0.01 
 for i in range(100000):
@@ -88,31 +88,75 @@ veloBRW_coneLengthSquared = veloBRW_coneLength*veloBRW_coneLength #squared for p
 veloBRW_coneMinLengthSquared = veloBRW_coneMinLength*veloBRW_coneMinLength #squared for performance
 def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph: list):
     global veloBRW_pts, veloBRW_maxVelocity, veloBRW_coneLengthSquared, veloBRW_coneMinLengthSquared, veloBRW_coneAngle, veloBRW_prevPos, veloBRW_lastChange, veloBRW_changeDT, x, y, veloBRW_pointsInRange
+    
+    # Wrap angles to [0, 2π] range to prevent unbounded growth
+    pos_sph = [fmod(pos_sph[0], 2*math.pi), fmod(pos_sph[1], 2*math.pi)]
+    
     if(elapsed_time > (veloBRW_lastChange + veloBRW_changeDT)):
+        print("\n--- NEW VELOBRW CALCULATION ---")
         veloBRW_pointsInRange = []
         veloBRW_lastChange += veloBRW_changeDT
+        
+        print(f"  1. PREV SPH: az={veloBRW_prevPos[0]:.3f}, el={veloBRW_prevPos[1]:.3f}")
+        print(f"  1. CURR SPH: az={pos_sph[0]:.3f}, el={pos_sph[1]:.3f}")
+        
         prev_pos_cart = sph2cart(*veloBRW_prevPos)
         pos_cart = sph2cart(*pos_sph)
-        #if(pos_sph != [0,0]):
-        #    print(pos_sph, pos_cart, cart2sph(*pos_cart))
-        velo = v3Scale(v3Sub(pos_cart, prev_pos_cart), 1 / dt)
+        
+        print(f"  2. PREV CART: x={prev_pos_cart[0]:.3f}, y={prev_pos_cart[1]:.3f}, z={prev_pos_cart[2]:.3f}")
+        print(f"  2. CURR CART: x={pos_cart[0]:.3f}, y={pos_cart[1]:.3f}, z={pos_cart[2]:.3f}")
+        
+        velo = v3Scale(v3Sub(pos_cart, prev_pos_cart), 1 / veloBRW_changeDT)
+        
+        print(f"  3. CONE DIR (unscaled): x={velo[0]:.3f}, y={velo[1]:.3f}, z={velo[2]:.3f}")
+        
         for candidatePt in veloBRW_pts:
             candVector = v3Sub(candidatePt, pos_cart)
             magS = magSquared3(candVector)
             if(magS < veloBRW_coneLengthSquared and magS > veloBRW_coneMinLengthSquared):
                 if(magSquared3(velo) == 0 or v3Angle(candVector,velo) < veloBRW_coneAngle):
                     veloBRW_pointsInRange.append(candidatePt)
+        
+        print(f"  4. Found {len(veloBRW_pointsInRange)} points in cone.")
+        
         if(len(veloBRW_pointsInRange) != 0):
             pt = random.choice(veloBRW_pointsInRange)
+            print(f"  5. CHOSEN CART: x={pt[0]:.3f}, y={pt[1]:.3f}, z={pt[2]:.3f}")
+            
             desired = cart2sph(*pt)
-            veloBRW_pts.remove(pt)
-            veloBRW_pts.append(generateUniformSpherePoint())
-            #print(f"P:{} D:{} A:{}")
-            x, y = norm2(v2Sub(desired, pos_sph))
-            # print(x, y)
+            # veloBRW_pts.remove(pt)
+            # veloBRW_pts.append(generateUniformSpherePoint())
+            
+            print(f"  6. DESIRED SPH: az={desired[0]:.3f}, el={desired[1]:.3f}")
+            
+            # Use raw difference since cone already constrains direction
+            # diff_theta = desired[0] - pos_sph[0]  # inner angle
+            # diff_phi = desired[1] - pos_sph[1]    # outer angle
+            
+            diff_theta = delta(pos_sph[0], desired[0], 2*math.pi)  # inner angle
+            diff_phi = delta(pos_sph[1], desired[1], 2*math.pi)    # outer angle
+            print(f"  7. DELTA SPH: d_az={diff_theta:.3f}, d_el={diff_phi:.3f}")
+            
+            x, y = norm2([diff_theta, diff_phi])
+            
+            print(f"  8. NORM VEC: az={x:.3f}, el={y:.3f}")
+            
             x, y = v2Scale([x, y], veloBRW_maxVelocity)
+            
+            print(f"  9. FINAL VELO: x={x:.3f}, y={y:.3f}")
+            
+            # Check if final velocity is pointing away from cone direction
+            # Convert 2D angular velocity back to 3D to compare with cone direction
+            if magSquared3(velo) > 0:
+                # The velocity direction should align with the cone
+                # Since we're working with angular velocities, we can check the sign/direction
+                # If the chosen point vector and velocity vector form a large angle, warn
+                chosen_vector = v3Sub(pt, pos_cart)
+                angle_between = v3Angle(chosen_vector, velo)
+                if angle_between >  veloBRW_coneAngle*1.2:  # More than 90 degrees
+                    print(f"  ⚠️  WARNING: Velocity pointing AWAY from cone! Angle: {math.degrees(angle_between):.1f}°")
         else:
-            print("no points found")
+            print("  WARN: no points found")
     veloBRW_prevPos = pos_sph
     return [x,y,veloBRW_pointsInRange]
 
@@ -196,92 +240,92 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
 
 
 
-# dis is ass
-# --- Global Variables for Stable Bounded Random Velocity ---
-veloBRW_lastChange = 0
-veloBRW_changeDT = 1.0  # seconds
-veloBRW_pts = [generateUniformSpherePoint() for _ in range(100000)]
-veloBRW_maxVelocity = VELO_MAX
-veloBRW_coneAngle = 5 * math.pi / 180.0
-veloBRW_coneLength = 0.55
-veloBRW_coneMinLength = 0.01
+# # dis is ass
+# # --- Global Variables for Stable Bounded Random Velocity ---
+# veloBRW_lastChange = 0
+# veloBRW_changeDT = 1.0  # seconds
+# veloBRW_pts = [generateUniformSpherePoint() for _ in range(100000)]
+# veloBRW_maxVelocity = VELO_MAX
+# veloBRW_coneAngle = 5 * math.pi / 180.0
+# veloBRW_coneLength = 0.55
+# veloBRW_coneMinLength = 0.01
 
-veloBRW_prevPos = [0, 0]
-veloBRW_pointsInRange = []
-veloBRW_coneLengthSquared = veloBRW_coneLength * veloBRW_coneLength
-veloBRW_coneMinLengthSquared = veloBRW_coneMinLength * veloBRW_coneMinLength
+# veloBRW_prevPos = [0, 0]
+# veloBRW_pointsInRange = []
+# veloBRW_coneLengthSquared = veloBRW_coneLength * veloBRW_coneLength
+# veloBRW_coneMinLengthSquared = veloBRW_coneMinLength * veloBRW_coneMinLength
 
-# --- Add state variables for smoothing ---
-veloBRW_old_xy = [0, 0]      # Holds the velocity at the start of the interval
-veloBRW_target_xy = [0, 0]   # Holds the velocity at the end of the interval
+# # --- Add state variables for smoothing ---
+# veloBRW_old_xy = [0, 0]      # Holds the velocity at the start of the interval
+# veloBRW_target_xy = [0, 0]   # Holds the velocity at the end of the interval
 
 
-def executeBoundedRandomVelocityWEIRD(elapsed_time: float, desired_g: float, pos_sph: list, outer_theta: float):
-    global veloBRW_pts, veloBRW_maxVelocity, veloBRW_coneLengthSquared, veloBRW_coneMinLengthSquared, \
-           veloBRW_coneAngle, veloBRW_prevPos, veloBRW_lastChange, veloBRW_changeDT, \
-           veloBRW_pointsInRange, veloBRW_target_xy, veloBRW_old_xy # <-- Add old_xy
+# def executeBoundedRandomVelocityWEIRD(elapsed_time: float, desired_g: float, pos_sph: list, outer_theta: float):
+#     global veloBRW_pts, veloBRW_maxVelocity, veloBRW_coneLengthSquared, veloBRW_coneMinLengthSquared, \
+#            veloBRW_coneAngle, veloBRW_prevPos, veloBRW_lastChange, veloBRW_changeDT, \
+#            veloBRW_pointsInRange, veloBRW_target_xy, veloBRW_old_xy # <-- Add old_xy
 
-    # --- Decision Block: Calculate a new target velocity once per interval ---
-    if elapsed_time > (veloBRW_lastChange + veloBRW_changeDT):
-        veloBRW_pointsInRange = []
-        veloBRW_lastChange += veloBRW_changeDT
+#     # --- Decision Block: Calculate a new target velocity once per interval ---
+#     if elapsed_time > (veloBRW_lastChange + veloBRW_changeDT):
+#         veloBRW_pointsInRange = []
+#         veloBRW_lastChange += veloBRW_changeDT
         
-        # Store the current target as the "old" one for the start of the interpolation
-        veloBRW_old_xy = veloBRW_target_xy
+#         # Store the current target as the "old" one for the start of the interpolation
+#         veloBRW_old_xy = veloBRW_target_xy
         
-        prev_pos_cart = sph2cart(*veloBRW_prevPos)
-        pos_cart = sph2cart(*pos_sph)
+#         prev_pos_cart = sph2cart(*veloBRW_prevPos)
+#         pos_cart = sph2cart(*pos_sph)
 
-        # 1. Filter points into a forward-facing cone
-        velo_for_cone = v3Sub(pos_cart, prev_pos_cart)
-        for candidatePt in veloBRW_pts:
-            candVector = v3Sub(candidatePt, pos_cart)
-            magS = magSquared3(candVector)
-            if magS < veloBRW_coneLengthSquared and magS > veloBRW_coneMinLengthSquared:
-                if magSquared3(velo_for_cone) == 0 or v3Angle(candVector, velo_for_cone) < veloBRW_coneAngle:
-                    veloBRW_pointsInRange.append(candidatePt)
+#         # 1. Filter points into a forward-facing cone
+#         velo_for_cone = v3Sub(pos_cart, prev_pos_cart)
+#         for candidatePt in veloBRW_pts:
+#             candVector = v3Sub(candidatePt, pos_cart)
+#             magS = magSquared3(candVector)
+#             if magS < veloBRW_coneLengthSquared and magS > veloBRW_coneMinLengthSquared:
+#                 if magSquared3(velo_for_cone) == 0 or v3Angle(candVector, velo_for_cone) < veloBRW_coneAngle:
+#                     veloBRW_pointsInRange.append(candidatePt)
         
-        # 2. Choose a random point from the valid cone
-        if len(veloBRW_pointsInRange) > 0:
-            pt = random.choice(veloBRW_pointsInRange)
-            veloBRW_pts.remove(pt)
-            veloBRW_pts.append(generateUniformSpherePoint())
+#         # 2. Choose a random point from the valid cone
+#         if len(veloBRW_pointsInRange) > 0:
+#             pt = random.choice(veloBRW_pointsInRange)
+#             veloBRW_pts.remove(pt)
+#             veloBRW_pts.append(generateUniformSpherePoint())
 
-            # 3. Stable Kinematic Conversion
-            cart_velo = norm3(v3Sub(pt, pos_cart))
-            omega_total_3D = v3Cross(pos_cart, cart_velo)
+#             # 3. Stable Kinematic Conversion
+#             cart_velo = norm3(v3Sub(pt, pos_cart))
+#             omega_total_3D = v3Cross(pos_cart, cart_velo)
             
-            desired_outer_omega = omega_total_3D[0]
-            inner_gimbal_axis = rotateX([0, 1, 0], outer_theta)
-            desired_inner_omega = v3Dot(omega_total_3D, inner_gimbal_axis)
+#             desired_outer_omega = omega_total_3D[0]
+#             inner_gimbal_axis = rotateX([0, 1, 0], outer_theta)
+#             desired_inner_omega = v3Dot(omega_total_3D, inner_gimbal_axis)
             
-            mag = mag2([desired_outer_omega, desired_inner_omega])
-            if mag > 0:
-                scale_factor = veloBRW_maxVelocity / mag
-                veloBRW_target_xy = [desired_outer_omega * scale_factor, desired_inner_omega * scale_factor]
-            else:
-                veloBRW_target_xy = [0, 0]
-        else:
-            print("WARN: No points found in cone. Maintaining Velocity.")
-            # If no new point is found, ensure no interpolation happens by setting old = new
-            veloBRW_old_xy = veloBRW_target_xy
+#             mag = mag2([desired_outer_omega, desired_inner_omega])
+#             if mag > 0:
+#                 scale_factor = veloBRW_maxVelocity / mag
+#                 veloBRW_target_xy = [desired_outer_omega * scale_factor, desired_inner_omega * scale_factor]
+#             else:
+#                 veloBRW_target_xy = [0, 0]
+#         else:
+#             print("WARN: No points found in cone. Maintaining Velocity.")
+#             # If no new point is found, ensure no interpolation happens by setting old = new
+#             veloBRW_old_xy = veloBRW_target_xy
 
-    veloBRW_prevPos = pos_sph
+#     veloBRW_prevPos = pos_sph
     
-    # --- Smoothing Logic (runs on every call) ---
-    # 1. Calculate progress through the current interval (from 0.0 to 1.0)
-    progress = (elapsed_time - veloBRW_lastChange) / veloBRW_changeDT
-    progress = max(0.0, min(1.0, progress)) # Clamp progress to prevent overshooting
+#     # --- Smoothing Logic (runs on every call) ---
+#     # 1. Calculate progress through the current interval (from 0.0 to 1.0)
+#     progress = (elapsed_time - veloBRW_lastChange) / veloBRW_changeDT
+#     progress = max(0.0, min(1.0, progress)) # Clamp progress to prevent overshooting
 
-    # 2. Linearly interpolate between the old and new target velocities
-    x = veloBRW_old_xy[0] + (veloBRW_target_xy[0] - veloBRW_old_xy[0]) * progress
-    y = veloBRW_old_xy[1] + (veloBRW_target_xy[1] - veloBRW_old_xy[1]) * progress
+#     # 2. Linearly interpolate between the old and new target velocities
+#     x = veloBRW_old_xy[0] + (veloBRW_target_xy[0] - veloBRW_old_xy[0]) * progress
+#     y = veloBRW_old_xy[1] + (veloBRW_target_xy[1] - veloBRW_old_xy[1]) * progress
 
-    return [x, y, veloBRW_pointsInRange]
+#     return [x, y, veloBRW_pointsInRange]
 
 
 posBRW_lastChange = 0
-posBRW_changeDT = 0.02 #sec
+posBRW_changeDT = 0.03 #sec
 posBRW_pts = []
 posBRW_maxVelocity = VELO_MAX
 posBRW_coneAngle = 5 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
@@ -297,31 +341,52 @@ posBRW_coneLengthSquared = posBRW_coneLength*posBRW_coneLength #squared for perf
 posBRW_coneMinLengthSquared = posBRW_coneMinLength*posBRW_coneMinLength #squared for performance
 def executeBoundedRandomPosition(elapsed_time: float, desired_g: float, pos_sph: list):
     global posBRW_pts, posBRW_maxVelocity, posBRW_coneLengthSquared, posBRW_coneMinLengthSquared, posBRW_coneAngle, posBRW_prevPos, posBRW_lastChange, posBRW_changeDT, x, y, posBRW_pointsInRange
+    # pos_sph = [fmod(pos_sph[0], 2*math.pi), fmod(pos_sph[1], 2*math.pi)]
+
     if(elapsed_time > (posBRW_lastChange + posBRW_changeDT)):
+        print("\n--- NEW POSBRW CALCULATION ---")
         posBRW_pointsInRange = []
         posBRW_lastChange += posBRW_changeDT
-        prev_pos_cart = sph2cart(*posBRW_prevPos)
-        pos_cart = sph2cart(*pos_sph)
-        #if(pos_sph != [0,0]):
-        #    print(pos_sph, pos_cart, cart2sph(*pos_cart))
-        pos = v3Scale(v3Sub(pos_cart, prev_pos_cart), 1 / dt)
+        
+        print(f"  1. PREV SPH: az={posBRW_prevPos[0]:.3f}, el={posBRW_prevPos[1]:.3f}")
+        print(f"  1. CURR SPH: az={pos_sph[0]:.3f}, el={pos_sph[1]:.3f}")
+
+        prev_pos_cart = sph2cart(posBRW_prevPos[1], posBRW_prevPos[0])
+        pos_cart = sph2cart(pos_sph[1], pos_sph[0])
+        
+        print(f"  2. PREV CART: x={prev_pos_cart[0]:.3f}, y={prev_pos_cart[1]:.3f}, z={prev_pos_cart[2]:.3f}")
+        print(f"  2. CURR CART: x={pos_cart[0]:.3f}, y={pos_cart[1]:.3f}, z={pos_cart[2]:.3f}")
+
+        # This is the vector that defines the cone's direction
+        pos_velo = v3Sub(pos_cart, prev_pos_cart)
+        print(f"  3. CONE DIR (unscaled): x={pos_velo[0]:.3f}, y={pos_velo[1]:.3f}, z={pos_velo[2]:.3f}")
+
+        if magSquared3(pos_velo) == 0:
+            print("  3a. WARN: Zero velocity, cone will be fully open.")
+
         for candidatePt in posBRW_pts:
             candVector = v3Sub(candidatePt, pos_cart)
             magS = magSquared3(candVector)
             if(magS < posBRW_coneLengthSquared and magS > posBRW_coneMinLengthSquared):
-                if(magSquared3(pos) == 0 or v3Angle(candVector,pos) < posBRW_coneAngle):
+                if(magSquared3(pos_velo) == 0 or v3Angle(candVector, pos_velo) < posBRW_coneAngle):
                     posBRW_pointsInRange.append(candidatePt)
+        
+        print(f"  4. Found {len(posBRW_pointsInRange)} points in cone.")
+
         if(len(posBRW_pointsInRange) != 0):
             pt = random.choice(posBRW_pointsInRange)
-            desired = cart2sph(*pt)
+            print(f"  5. CHOSEN CART: x={pt[0]:.3f}, y={pt[1]:.3f}, z={pt[2]:.3f}")
+            
+            desired = cart2sph(pt[0], pt[1], pt[2])
             posBRW_pts.remove(pt)
             posBRW_pts.append(generateUniformSpherePoint())
-            #print(f"P:{} D:{} A:{}")
+            
+            print(f"  6. DESIRED SPH: az={desired[0]:.3f}, el={desired[1]:.3f}")
             x, y = desired
-            #print(x, y)
-            #x, y = v2Scale([x, y], posBRW_maxVelocity)
         else:
-            print("WARN: No points found in cone. Maintaining Direction.")
+            print("  WARN: No points found in cone. Maintaining previous target.")
+            # If no points, we don't change x and y, so the target remains the same.
+    
     posBRW_prevPos = pos_sph
     return [x,y,posBRW_pointsInRange]
 

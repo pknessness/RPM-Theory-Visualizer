@@ -171,7 +171,7 @@ def writeFile(text):
 
 beginTime = 0
 
-SEED = 9
+SEED = 5
 
 if __name__ == "__main__":
     rand_seed(SEED)
@@ -405,6 +405,14 @@ if __name__ == "__main__":
             
             renderings.append(WriteLine(f"EFFECTIVE: X:{accel[0]:.2f} Y:{accel[1]:.2f} Z:{accel[2]:.2f}", (205,100,200)))
             renderings.append(WriteLine(f"INSTANTANEOUS: X:{instaccel[0]:.2f} Y:{instaccel[1]:.2f} Z:{instaccel[2]:.2f}", (205,100,200)))
+            
+            # Add spherical position (azimuth, elevation)
+            pos_sph = [fmod(inner_theta, 2*math.pi), fmod(outer_theta, 2*math.pi)]
+            renderings.append(WriteLine(f"SPHERICAL POS: Az:{pos_sph[0]:.3f} rad El:{pos_sph[1]:.3f} rad", (100,200,255)))
+            
+            # Add Cartesian position on unit sphere
+            pos_cart = sph2cart(pos_sph[1], pos_sph[0])
+            renderings.append(WriteLine(f"CARTESIAN POS: X:{pos_cart[0]:.3f} Y:{pos_cart[1]:.3f} Z:{pos_cart[2]:.3f}", (100,200,255)))
             
             
             #[accel[0] * scalar, accel[1] * scalar, accel[2] * scalar]
