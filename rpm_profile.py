@@ -136,21 +136,26 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             next_positions = [desired, alternatePermutationSpherical(desired)]
             p_sph = pos_sph
             n_sph = desired
-            #best_d_phi = delta(p_sph[0], n_sph[0], 2 * math.pi)
-            #best_d_theta = delta(p_sph[1], n_sph[1], 2 * math.pi)
-            best_d_phi, best_d_theta = v2Sub(n_sph, p_sph)
-            print("original: ", p_sph, n_sph, [best_d_phi, best_d_theta])
+            best_d_phi = delta(p_sph[0], n_sph[0], 2 * math.pi)
+            best_d_theta = delta(p_sph[1], n_sph[1], 2 * math.pi)
+            # best_d_phi, best_d_theta = v2Sub(n_sph, p_sph)
+            best_d_phi, best_d_theta = norm2([best_d_phi, best_d_theta])
+            print("xy:", x, y)
+            print("original: ", p_sph, n_sph, [best_d_phi, best_d_theta], [abs(best_d_phi-x), abs(best_d_theta-y)])
             for i in range(2):
                 prev_sph = prev_positions[i]
                 for j in range(2):
                     next_sph = next_positions[j]
                     if((i + j) % 2 == 0):
                         continue
-                    #d_phi = delta(prev_sph[0], next_sph[0], 2 * math.pi)
-                    #d_theta = delta(prev_sph[1], next_sph[1], 2 * math.pi)
-                    d_phi, d_theta = v2Sub(next_sph, prev_sph)
-                    print("potential: ", prev_sph,next_sph, [d_phi, d_theta])
-                    if((abs(best_d_phi) + abs(best_d_theta)) > (abs(d_phi) + abs(d_theta))):
+                    d_phi = delta(prev_sph[0], next_sph[0], 2 * math.pi)
+                    d_theta = delta(prev_sph[1], next_sph[1], 2 * math.pi)
+                    # d_phi, d_theta = v2Sub(next_sph, prev_sph)
+                    d_phi, d_theta = norm2([d_phi, d_theta])
+                    print("potential: ", prev_sph,next_sph, [d_phi, d_theta], [abs(d_phi-x), abs(d_theta-y)])
+                    #best_p, best_t = norm2([best_d_phi, best_d_theta])
+                    #p, t = norm2([d_phi, d_theta])
+                    if((abs(best_d_phi-x) + abs(best_d_theta-y)) > (abs(d_phi-x) + abs(d_theta-y))):
                         p_sph = prev_sph
                         n_sph = next_sph
                         best_d_phi = d_phi
