@@ -143,11 +143,12 @@ PROFILE_VELO_JON = False # INCOMMENSURABLE NUMBERS ALGORITHM
 PROFILE_VELO_JONMODIFIED = False # CONSISTENTLY CHANGING (Cycloidal) DIRECTION ALGORITHM
 PROFILE_VELO_BRW = True # BOUNDED RANDOM WALK ALGORITHM
 PROFILE_VELO_CLINOSTAT = False # CLINOSTAT ONE AXIS OF MOVEMENT
+PROFILE_VELO_3D_CLIONSTAT = False
 
 PROFILE_POS_BRW = False # BOUNDED RANDOM WALK ALGORITHM POSITION STYLE
 
 
-StopAtXSeconds = 60 * 60 * 1 # 1hr
+StopAtXSeconds = 60 * 60 * 2 # 1hr
 
 filename = "blank"
 
@@ -171,7 +172,7 @@ def writeFile(text):
 
 beginTime = 0
 
-SEED = 5
+SEED = 4
 
 if __name__ == "__main__":
     rand_seed(SEED)
@@ -411,7 +412,7 @@ if __name__ == "__main__":
             renderings.append(WriteLine(f"SPHERICAL POS: Az:{pos_sph[0]:.3f} rad El:{pos_sph[1]:.3f} rad", (100,200,255)))
             
             # Add Cartesian position on unit sphere
-            pos_cart = sph2cart(pos_sph[1], pos_sph[0])
+            pos_cart = sph2cart(*pos_sph)
             renderings.append(WriteLine(f"CARTESIAN POS: X:{pos_cart[0]:.3f} Y:{pos_cart[1]:.3f} Z:{pos_cart[2]:.3f}", (100,200,255)))
             
             

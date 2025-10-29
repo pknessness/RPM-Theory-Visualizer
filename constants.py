@@ -26,8 +26,8 @@ VECTOR_BOX = 1
 #profile (rad/s)
 
 # VELO_MAX = 0.785
-# VELO_MAX = 1.57
-VELO_MAX = 3.14159
+VELO_MAX = 1.57
+# VELO_MAX = 3.14159
 
 #0.733 rads = 7RPM
 #0.785 rads = 7.5RPM
@@ -71,22 +71,22 @@ def cart2sph(z: float, x: float, y: float):
     phi = math.atan2(z, math.sqrt(x*x + y*y))
     return [2 * math.pi - phi, theta]
 
-# def sph2cart(theta: float, phi: float):
-#     #theta azimuth, phi elevation
-#     #print([theta, phi], math.sin(phi), math.cos(phi), math.sin(theta), math.cos(theta))
-#     x1 = math.cos(-phi) * math.cos(theta)
-#     y1 = math.cos(-phi) * math.sin(theta)
-#     z1 = math.sin(-phi)
-#     #print([theta, phi], [x1, y1, z1])
-#     return [x1, y1, z1]
+def sph2cart(theta: float, phi: float):
+    #theta azimuth, phi elevation
+    #print([theta, phi], math.sin(phi), math.cos(phi), math.sin(theta), math.cos(theta))
+    x1 = math.cos(-phi) * math.cos(theta)
+    y1 = math.cos(-phi) * math.sin(theta)
+    z1 = math.sin(-phi)
+    #print([theta, phi], [x1, y1, z1])
+    return [x1, y1, z1]
 
-# def cart2sph(x: float, y: float, z: float):
-#     #theta azimuth, phi elevation
-#     #theta = math.acos(z)
-#     #phi = math.acos(x / math.sqrt(x*x + y*y))
-#     theta = math.atan2(y, x)
-#     phi = math.atan2(z, math.sqrt(x*x + y*y))
-#     return [theta, phi]
+def cart2sph(x: float, y: float, z: float):
+    #theta azimuth, phi elevation
+    #theta = math.acos(z)
+    #phi = math.acos(x / math.sqrt(x*x + y*y))
+    theta = math.atan2(y, x)
+    phi = math.atan2(z, math.sqrt(x*x + y*y))
+    return [theta, phi]
 
 class WriteLine:
     def __init__(self, text, color):
