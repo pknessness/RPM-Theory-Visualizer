@@ -83,8 +83,11 @@ def executeClinostat(elapsed_time: float, desired_g: float, pos_sph: list):
 #     return executeAnshal(elapsed_time, desired_g)
     #return [10,10]
 
+def alternatePermutationSpherical(pos_sph: list):
+    return fmodl([3*math.pi - pos_sph[0], math.pi + pos_sph[0]], 2*math.pi);
+
 veloBRW_lastChange = 0
-veloBRW_changeDT = 1 #sec
+veloBRW_changeDT = 0.3 #sec
 veloBRW_pts = []
 veloBRW_maxVelocity = VELO_MAX
 veloBRW_coneAngle = 15 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
@@ -120,15 +123,32 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             desired = fmodl(desired, 2 * math.pi)
             veloBRW_pts.remove(pt)
             veloBRW_pts.append(generateUniformSpherePoint())
-            delt = [delta(pos_sph[0], desired[0], 2 * math.pi), delta(pos_sph[1], desired[1], 2 * math.pi)]
-            px = x
-            py = y
-            x, y = norm2(delt)
-            if(1):
+            #delt = [delta(pos_sph[0], desired[0], 2 * math.pi), delta(pos_sph[1], desired[1], 2 * math.pi)]
+            # px = x
+            # py = y
+            # x, y = norm2(delt)
+            # if(1):
                 
-                if(1 or abs(px - x) + abs(py - y) > 0.1):
-                    print(f"A{pos_sph[0]:.2f},{pos_sph[1]:.2f} D{desired[0]:.2f},{desired[1]:.2f} delt{delt[0]:.2f},{delt[1]:.2f} {px:.2f},{py:.2f} -> {x:.2f},{y:.2f}")
-            x, y = v2Scale([x, y], veloBRW_maxVelocity)
+            #     if(1 or abs(px - x) + abs(py - y) > 0.1):
+            #         print(f"A{pos_sph[0]:.2f},{pos_sph[1]:.2f} D{desired[0]:.2f},{desired[1]:.2f} delt{delt[0]:.2f},{delt[1]:.2f} {px:.2f},{py:.2f} -> {x:.2f},{y:.2f}")
+            # x, y = v2Scale([x, y], veloBRW_maxVelocity)
+            prev_positions = [veloBRW_prevPos, alternatePermutationSpherical(veloBRW_prevPos)]
+            next_positions = [desired, alternatePermutationSpherical(desired)]
+            p_sph = veloBRW_prevPos
+            n_sph = desired
+            best_d_phi = delta(p_sph[0], n_sph[0], 2 * math.pi)
+            best_d_theta = delta(p_sph[1], n_sph[1], 2 * math.pi)
+            for prev_sph in prev_positions:
+                for next_sph in next_positions:
+                    d_phi = delta(prev_sph[0], next_sph[0], 2 * math.pi)
+                    d_theta = delta(prev_sph[1], next_sph[1], 2 * math.pi)
+                    
+                    if((abs(best_d_phi) + abs(best_d_theta)) > (abs(d_phi) + abs(d_theta))):
+                        p_sph = prev_sph
+                        n_sph = next_sph
+            print(p_sph, n_sph, [best_d_phi, best_d_theta])
+            x, y = norm2([best_d_phi, best_d_theta])
+
     veloBRW_prevPos = pos_sph
     addTrail(pos_sph)
     return [x,y, trail,veloBRW_pointsInRange]
