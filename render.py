@@ -412,19 +412,21 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list, points
         pygame.draw.circle(screen, vectorColors[3], [pt[0] * scale + w/2, pt[1] * scale + h/2], 3, 1)
         ind += 1
         renderPointsIndex += 1
-        
-    trailind = 0
-    while(trailind < (len(trail) - 1)):
-        point1 = rotateZ(trail[trailind], angle)
-        pt1 = pointToProjected([point1[0]*cloudR, point1[1]*cloudR, point1[2]*cloudR])
-        point2 = rotateZ(trail[trailind + 1], angle)
-        pt2 = pointToProjected([point2[0]*cloudR, point2[1]*cloudR, point2[2]*cloudR])
-        pygame.draw.line(screen, vectorColors[4], [pt1[0] * scale + w/2, pt1[1] * scale + h/2], [pt2[0] * scale + w/2, pt2[1] * scale + h/2], 1)
-        trailind += 1
     
-    endd = rotateZ(trail[-1], angle)
-    endpt = pointToProjected([endd[0]*cloudR, endd[1]*cloudR, endd[2]*cloudR])
-    pygame.draw.line(screen, vectorColors[4], [w/2,h/2], [endpt[0] * scale + w/2, endpt[1] * scale + h/2], 1)
+    if(len(trail) > 0):
+        trailind = 0
+        while(trailind < (len(trail) - 1)):
+            point1 = rotateZ(trail[trailind], angle)
+            pt1 = pointToProjected([point1[0]*cloudR, point1[1]*cloudR, point1[2]*cloudR])
+            point2 = rotateZ(trail[trailind + 1], angle)
+            pt2 = pointToProjected([point2[0]*cloudR, point2[1]*cloudR, point2[2]*cloudR])
+            pygame.draw.line(screen, vectorColors[4], [pt1[0] * scale + w/2, pt1[1] * scale + h/2], [pt2[0] * scale + w/2, pt2[1] * scale + h/2], 1)
+            trailind += 1
+        
+        endd = rotateZ(trail[-1], angle)
+        endpt = pointToProjected([endd[0]*cloudR, endd[1]*cloudR, endd[2]*cloudR])
+        pygame.draw.line(screen, vectorColors[4], [w/2,h/2], [endpt[0] * scale + w/2, endpt[1] * scale + h/2], 1)
+    
     
     if(renderPointsIndex >= len(points)):
         renderPointsIndex = 0
