@@ -148,7 +148,7 @@ PROFILE_VELO_3D_CLIONSTAT = False
 PROFILE_POS_BRW = False # BOUNDED RANDOM WALK ALGORITHM POSITION STYLE
 
 
-StopAtXSeconds = 60 * 60 * 2 # 1hr
+StopAtXSeconds = 60 * 60 * 0.5 # 1hr
 
 filename = "blank"
 

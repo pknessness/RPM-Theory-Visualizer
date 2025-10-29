@@ -71,7 +71,7 @@ def cart2sph(z: float, x: float, y: float):
     phi = math.atan2(z, math.sqrt(x*x + y*y))
     return [2 * math.pi - phi, theta]
 
-def sph2cart(theta: float, phi: float):
+def sph2cart_old(theta: float, phi: float):
     #theta azimuth, phi elevation
     #print([theta, phi], math.sin(phi), math.cos(phi), math.sin(theta), math.cos(theta))
     x1 = math.cos(-phi) * math.cos(theta)
@@ -80,7 +80,7 @@ def sph2cart(theta: float, phi: float):
     #print([theta, phi], [x1, y1, z1])
     return [x1, y1, z1]
 
-def cart2sph(x: float, y: float, z: float):
+def cart2sph_old(x: float, y: float, z: float):
     #theta azimuth, phi elevation
     #theta = math.acos(z)
     #phi = math.acos(x / math.sqrt(x*x + y*y))

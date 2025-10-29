@@ -72,12 +72,12 @@ def executeVelo(elapsed_time: float, desired_g: float):
     return [10,10]
 
 veloBRW_lastChange = 0
-veloBRW_changeDT = 1 #sec
+veloBRW_changeDT = 0.2 #sec
 veloBRW_pts = []
 veloBRW_maxVelocity = VELO_MAX
-veloBRW_coneAngle = 30 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
+veloBRW_coneAngle = 10 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
 veloBRW_coneLength = 0.55
-veloBRW_coneMinLength = 0.01 
+veloBRW_coneMinLength = 0.01
 for i in range(100000):
     veloBRW_pts.append(generateUniformSpherePoint())
     #veloBRW_pts.append(generateWeightedSpherePoint(1))
@@ -104,8 +104,8 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
         # print(f"  1. PREV SPH: az={veloBRW_prevPos[0]:.3f}, el={veloBRW_prevPos[1]:.3f}")
         # print(f"  1. CURR SPH: az={pos_sph[0]:.3f}, el={pos_sph[1]:.3f}")
             
-        prev_pos_cart = sph2cart(*veloBRW_prevPos)
-        pos_cart = sph2cart(*pos_sph)
+        prev_pos_cart = sph2cart_old(*veloBRW_prevPos)
+        pos_cart = sph2cart_old(*pos_sph)
         
         # print(f"  2. PREV CART: x={prev_pos_cart[0]:.3f}, y={prev_pos_cart[1]:.3f}, z={prev_pos_cart[2]:.3f}")
         # print(f"  2. CURR CART: x={pos_cart[0]:.3f}, y={pos_cart[1]:.3f}, z={pos_cart[2]:.3f}")
@@ -127,7 +127,7 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             pt = random.choice(veloBRW_pointsInRange)
             # print(f"  5. CHOSEN CART: x={pt[0]:.3f}, y={pt[1]:.3f}, z={pt[2]:.3f}")
             
-            desired = cart2sph(*pt)
+            # desired = cart2sph(*pt)
             # veloBRW_pts.remove(pt)
             # veloBRW_pts.append(generateUniformSpherePoint())
             
@@ -137,14 +137,14 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             k2 = pos_cart[1]
             k3 = pos_cart[2]
 
-            # k1_dot = (pt[0] - k1) / veloBRW_changeDT
-            # k2_dot = (pt[1] - k2) / veloBRW_changeDT
-            # k3_dot = (pt[2] - k3) / veloBRW_changeDT
+            k1_dot = (pt[0] - k1) / veloBRW_changeDT
+            k2_dot = (pt[1] - k2) / veloBRW_changeDT
+            k3_dot = (pt[2] - k3) / veloBRW_changeDT
 
-            Kp = 1.0
-            k1_dot = (pt[0] - k1) * Kp
-            k2_dot = (pt[1] - k2) * Kp
-            k3_dot = (pt[2] - k3) * Kp
+            # Kp = 1.0
+            # k1_dot = (pt[0] - k1) * Kp
+            # k2_dot = (pt[1] - k2) * Kp
+            # k3_dot = (pt[2] - k3) * Kp
 
             # Add this epsilon (a tiny number) to your denominators
             epsilon = 1e-6 
@@ -152,13 +152,13 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             denominator_sqrt = math.sqrt(denominator_sq)
             
             # Check for singularity (when near poles)
-            # if denominator_sq < 0.01:  # When k1^2 + k2^2 is very small (near poles)
-            #     print(f"WARNING: Approaching singularity! denominator_sq = {denominator_sq:.6f}")
+            if denominator_sq < 0.01:  # When k1^2 + k2^2 is very small (near poles)
+                print(f"WARNING: Approaching singularity! denominator_sq = {denominator_sq:.6f}")
 
             # #outer
             q1_dot = ((k1*k2_dot) - (k2*k1_dot)) / (denominator_sq + epsilon)
             # #inner
-            q2_dot = -k3_dot / (math.sqrt(denominator_sq) + epsilon)
+            q2_dot = -k3_dot / (math.sqrt(denominator_sq+ epsilon))
 
 
             # if (denominator_sq < 1e-5):
@@ -169,15 +169,17 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
             #     q2_dot = -k3_dot / (denominator_sqrt + epsilon)
 
             # x outer y inner
-            x, y = norm2([q2_dot,q1_dot])
+            # x, y = norm2([q2_dot,q1_dot])
             
             # print(f"  8. NORM VEC: az={x:.3f}, el={y:.3f}")
             
-            x, y = v2Scale([x, y], veloBRW_maxVelocity)
+            # x, y = v2Scale([x, y], veloBRW_maxVelocity)
+            x = q2_dot
+            y = q1_dot
             # print(f"  9. FINAL VELO: x={x:.3f}, y={y:.3f}")
         else:
             print("  WARN: no points found")
-        veloBRW_prevPos = pos_sph
+    veloBRW_prevPos = pos_sph
     return [x,y,veloBRW_pointsInRange]
 
 # veloBRW_lastChange = 0
