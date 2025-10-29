@@ -146,8 +146,8 @@ def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph:
                 prev_sph = prev_positions[i]
                 for j in range(2):
                     next_sph = next_positions[j]
-                    if((i + j) % 2 == 0):
-                        continue
+                    # if((i + j) % 2 == 0):
+                    #     continue
                     d_phi = delta(prev_sph[0], next_sph[0], 2 * math.pi)
                     d_theta = delta(prev_sph[1], next_sph[1], 2 * math.pi)
                     # d_phi, d_theta = v2Sub(next_sph, prev_sph)
