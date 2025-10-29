@@ -247,7 +247,7 @@ angle = 0
 renderPointsIndex = 0
 renderPointsPer = 500
 
-def render(actual: list, desired: list, vectors: list[vec3D], text: list, points: list):
+def render(actual: list, desired: list, vectors: list[vec3D], text: list, points: list, trail: list):
     global x, cameraDir, projectionPanelPos, angle, fov, zoomFactor, renderPointsIndex, renderPointsPer
     global vertices, squares, quads
     
@@ -402,16 +402,29 @@ def render(actual: list, desired: list, vectors: list[vec3D], text: list, points
     # print(zoomFactor)
     cloudR = 55
     ind = 0
+    w, h = pygame.display.get_window_size()
+    scale = h/projectionPanelHeight
     while(renderPointsIndex < len(points) and ind < renderPointsPer):
         point = points[renderPointsIndex]
         # createCube([point[0]*cloudR, point[1]*cloudR, point[2]*cloudR], 1)
-        w, h = pygame.display.get_window_size()
-        scale = h/projectionPanelHeight
         point = rotateZ(point, angle)
         pt = pointToProjected([point[0]*cloudR, point[1]*cloudR, point[2]*cloudR])
         pygame.draw.circle(screen, vectorColors[3], [pt[0] * scale + w/2, pt[1] * scale + h/2], 3, 1)
         ind += 1
         renderPointsIndex += 1
+        
+    trailind = 0
+    while(trailind < (len(trail) - 1)):
+        point1 = rotateZ(trail[trailind], angle)
+        pt1 = pointToProjected([point1[0]*cloudR, point1[1]*cloudR, point1[2]*cloudR])
+        point2 = rotateZ(trail[trailind + 1], angle)
+        pt2 = pointToProjected([point2[0]*cloudR, point2[1]*cloudR, point2[2]*cloudR])
+        pygame.draw.line(screen, vectorColors[4], [pt1[0] * scale + w/2, pt1[1] * scale + h/2], [pt2[0] * scale + w/2, pt2[1] * scale + h/2], 1)
+        trailind += 1
+    
+    endd = rotateZ(trail[-1], angle)
+    endpt = pointToProjected([endd[0]*cloudR, endd[1]*cloudR, endd[2]*cloudR])
+    pygame.draw.line(screen, vectorColors[4], [w/2,h/2], [endpt[0] * scale + w/2, endpt[1] * scale + h/2], 1)
     
     if(renderPointsIndex >= len(points)):
         renderPointsIndex = 0
@@ -464,7 +477,7 @@ if __name__ == "__main__":
         
         disp = [0,10,0]
         
-        render([x,y], None, [vec3D(instaccel, disp), vec3D(acce, disp, 1, True)], renderings, testPts)
+        render([x,y], None, [vec3D(instaccel, disp), vec3D(acce, disp, 1, True)], renderings, testPts, fmodl([x_prev, y_prev], 2 * math.pi))
         #x += 0.013291
         #y += 0.23129
         #x += fsin(ticks/10)/100

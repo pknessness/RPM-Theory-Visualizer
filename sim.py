@@ -129,7 +129,7 @@ POS_PID_ONLY_ENABLED = False #NOT RECOMMENDED TO USE
 POS_VELO_PID_ENABLED = True
 VELO_PID_ONLY_ENABLED = False
 
-MANUAL_CONTROL = True
+MANUAL_CONTROL = False
 MANUAL_POS_SCALING = 0.01
 MANUAL_TORQUE_SCALING = 1
 
@@ -141,13 +141,13 @@ PROFILE_VELO_ANSHAL = False # SIMPLIFIED RANDOM DIRECTION ALGORITHM
 PROFILE_VELO_ANSHALMODIFIED = False # SIMPLIFIED RANDOM DIRECTION ALGORITHM (WITH ACOS)
 PROFILE_VELO_JON = False # INCOMMENSURABLE NUMBERS ALGORITHM
 PROFILE_VELO_JONMODIFIED = False # CONSISTENTLY CHANGING (Cycloidal) DIRECTION ALGORITHM
-PROFILE_VELO_BRW = False # BOUNDED RANDOM WALK ALGORITHM
+PROFILE_VELO_BRW = True # BOUNDED RANDOM WALK ALGORITHM
 PROFILE_VELO_CLINOSTAT = False # CLINOSTAT ONE AXIS OF MOVEMENT
 
 PROFILE_POS_BRW = True # BOUNDED RANDOM WALK ALGORITHM POSITION STYLE
 
 
-StopAtXSeconds = 60 * 60 * 0.5 # 1hr
+StopAtXSeconds = 60 * 60 * 1 # 1hr
 
 filename = "blank"
 
@@ -171,7 +171,8 @@ def writeFile(text):
 
 beginTime = 0
 
-SEED = 0
+SEED = random.randint(0,10)
+
 
 if __name__ == "__main__":
     rand_seed(SEED)
@@ -248,7 +249,10 @@ if __name__ == "__main__":
         prev_outer_theta = outer_theta
         prev_inner_theta = inner_theta
         
+        prev_theta = [fmod(prev_inner_theta, 2*math.pi), fmod(prev_outer_theta, 2*math.pi)]
+        
         renderPts = []
+        trail = []
         
         if(POS_PID_ONLY_ENABLED):
             if(MANUAL_CONTROL):
@@ -280,17 +284,17 @@ if __name__ == "__main__":
                         
                 # if(mouse[0] and not prevMouse[0]):
                 #     dragPos
-                renderPts = rpm_profile.manualPoint(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                renderPts = [sph2cart(*prev_theta)]
 
             else:
                 #desired_outer_theta, desired_inner_theta = rpm_profile.executePos(elapsed_time, 0.0)
                 
                 #it goes azimuth, elevation, and inner is azimuth and outer is elevation so inner, outer on the input
-                desired_outer_theta, desired_inner_theta, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                #desired_outer_theta, desired_inner_theta, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
                 #print(renderPts)
                 
                 if(PROFILE_POS_BRW):
-                    desired_outer_theta, desired_inner_theta, renderPts = rpm_profile.executeBoundedRandomPosition(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                    desired_outer_theta, desired_inner_theta, trail, renderPts = rpm_profile.executeBoundedRandomPosition(elapsed_time, 0.0, prev_theta)
                 else:
                     print("SHOULD NEVER REACH")
                     exit(-6)
@@ -317,20 +321,25 @@ if __name__ == "__main__":
                     desired_inner_omega = disp[0] * MANUAL_VELO_SCALING
                 else:
                     dragPos[0] = mouse_pos
-                renderPts = rpm_profile.manualPoint(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                renderPts = [sph2cart(*prev_theta)]
             else:
                 if(PROFILE_VELO_ANSHAL):
-                    desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshal(elapsed_time, 0.0)
+                    desired_outer_omega, desired_inner_omega, trail = rpm_profile.executeAnshal(elapsed_time, 0.0, prev_theta)
+                    renderPts = [sph2cart(*prev_theta)]
                 elif(PROFILE_VELO_ANSHALMODIFIED):
-                    desired_outer_omega, desired_inner_omega = rpm_profile.executeAnshalModified(elapsed_time, 0.0)
+                    desired_outer_omega, desired_inner_omega, trail = rpm_profile.executeAnshalModified(elapsed_time, 0.0, prev_theta)
+                    renderPts = [sph2cart(*prev_theta)]
                 elif(PROFILE_VELO_JON):
-                    desired_outer_omega, desired_inner_omega = rpm_profile.executeJon(elapsed_time, 0.0)
+                    desired_outer_omega, desired_inner_omega, trail = rpm_profile.executeJon(elapsed_time, 0.0, prev_theta)
+                    renderPts = [sph2cart(*prev_theta)]
                 elif(PROFILE_VELO_JONMODIFIED):
-                    desired_outer_omega, desired_inner_omega = rpm_profile.executeJonModified(elapsed_time, 0.0)
+                    desired_outer_omega, desired_inner_omega, trail = rpm_profile.executeJonModified(elapsed_time, 0.0, prev_theta)
+                    renderPts = [sph2cart(*prev_theta)]
                 elif(PROFILE_VELO_BRW):
-                    desired_outer_omega, desired_inner_omega, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, [prev_inner_theta, prev_outer_theta])
+                    desired_outer_omega, desired_inner_omega, trail, renderPts = rpm_profile.executeBoundedRandomVelocity(elapsed_time, 0.0, prev_theta)
                 elif(PROFILE_VELO_CLINOSTAT):
-                    desired_outer_omega, desired_inner_omega = rpm_profile.executeClinostat(elapsed_time, 0.0)
+                    desired_outer_omega, desired_inner_omega, trail = rpm_profile.executeClinostat(elapsed_time, 0.0, prev_theta)
+                    renderPts = [sph2cart(*prev_theta)]
                 else:
                     print("SHOULD NEVER REACH")
                     exit(-6)
@@ -384,7 +393,7 @@ if __name__ == "__main__":
         
             render.render([outer_theta, inner_theta], desired, 
                 [render.vec3D(accel, [0,0,0], 9.81, False)], 
-                renderings, renderPts)
+                renderings, renderPts, trail)
         
         writeFile(f"{elapsed_time:.2f}, {inner_theta:.6f}, {outer_theta:.6f}, {instaccel[0]:.6f}, {instaccel[1]:.6f}, {instaccel[2]:.6f}, {mag3(accel):.6f}\n")
         
@@ -405,4 +414,7 @@ if __name__ == "__main__":
             prevMouse = mouse
             
         if(StopAtXSeconds != 0 and int(elapsed_time*100) == int(elapsed_time)*100 and int(elapsed_time) % 60 == 0):
-            print(f"\rProgress: {elapsed_time/StopAtXSeconds * 100 :.2f}% {secToStr((prev_time - beginTime) * (StopAtXSeconds - elapsed_time) / elapsed_time)} remaining", end="")
+            print(f"\rProgress: {elapsed_time/StopAtXSeconds * 100 :.2f}% {secToStr((prev_time - beginTime) * (StopAtXSeconds - elapsed_time) / elapsed_time)} remaining. Effective: {mag3(accel)}G", end="")
+        
+        #input("Press Enter to continue...")
+

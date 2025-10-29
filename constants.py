@@ -74,19 +74,27 @@ def norm3(vec: list):
 def sph2cart(phi: float, theta: float):
     #theta azimuth, phi elevation
     #print([theta, phi], math.sin(phi), math.cos(phi), math.sin(theta), math.cos(theta))
-    x1 = math.cos(phi) * math.cos(theta)
-    y1 = math.cos(phi) * math.sin(theta)
-    z1 = math.sin(phi)
+    x1 = math.cos(2 * math.pi - phi) * math.cos(theta)
+    y1 = math.cos(2 * math.pi - phi) * math.sin(theta)
+    z1 = math.sin(2 * math.pi - phi)
     #print([theta, phi], [x1, y1, z1])
-    return [x1, y1, z1]
+    return [z1, x1, y1]
 
-def cart2sph(x: float, y: float, z: float):
+def cart2sph(z: float, x: float, y: float):
     #theta azimuth, phi elevation
     #theta = math.acos(z)
     #phi = math.acos(x / math.sqrt(x*x + y*y))
     theta = math.atan2(y, x)
     phi = math.atan2(z, math.sqrt(x*x + y*y))
-    return [phi, theta]
+    return [2 * math.pi - phi, theta]
+
+#phi theta
+# x y z NO
+# x z y kinda (inner good, outer not)
+# y x z NO
+# y z x NO
+# z x y YES but inner flipped
+# z y x NO
 
 class WriteLine:
     def __init__(self, text, color):
@@ -103,6 +111,16 @@ def fmod(num: float, base: float):
     while(op < 0):
         op += base
     return op
+
+def fmodl(num: list, base: float):
+    res = []
+    for op in num:
+        while(op > base):
+            op -= base
+        while(op < 0):
+            op += base
+        res.append(op)
+    return res
 
 def delta(source: float, destination: float, mod: float):
     delta = destination - source
