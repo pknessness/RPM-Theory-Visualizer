@@ -26,8 +26,8 @@ VECTOR_BOX = 1
 #profile (rad/s)
 
 # VELO_MAX = 0.785
-# VELO_MAX = 1.57
-VELO_MAX = 3.14159
+VELO_MAX = 1.57
+# VELO_MAX = 3.14159
 
 #0.733 rads = 7RPM
 #0.785 rads = 7.5RPM

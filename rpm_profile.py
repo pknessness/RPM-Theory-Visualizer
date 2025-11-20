@@ -33,7 +33,7 @@ def addTrail(pos_sph: list):
 veloAnshal_lastChange = 0
 veloAnshal_changeDT = 0.3 #sec
 veloAnshal_angle = 0 #degrees
-veloAnshal_angleCone = 1 #degrees
+veloAnshal_angleCone = 15 #degrees
 veloAnshal_maxVelocity = VELO_MAX #rad/s
 def executeAnshal(elapsed_time: float, desired_g: float, pos_sph: list):
     global x, y, veloAnshal_lastChange, veloAnshal_angle, veloAnshal_changeDT, veloAnshal_angleCone, veloAnshal_maxVelocity
@@ -43,6 +43,7 @@ def executeAnshal(elapsed_time: float, desired_g: float, pos_sph: list):
         x = math.sin(math.radians(veloAnshal_angle)) * veloAnshal_maxVelocity
         y = math.cos(math.radians(veloAnshal_angle)) * veloAnshal_maxVelocity
     addTrail(pos_sph)
+    # print(x,y)
     return [x, y, trail]
     #return [10,10]
 
@@ -83,55 +84,94 @@ def executeClinostat(elapsed_time: float, desired_g: float, pos_sph: list):
 #     return executeAnshal(elapsed_time, desired_g)
     #return [10,10]
 
+
 veloBRW_lastChange = 0
 veloBRW_changeDT = 1 #sec
 veloBRW_pts = []
+q1_dot_prev = 0
+q2_dot_prev = 0
 veloBRW_maxVelocity = VELO_MAX
-veloBRW_coneAngle = 15 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
+veloBRW_coneAngle = 30 * math.pi / 180 # Radial angle of the cone in radians (Half of max angle of cone)
 veloBRW_coneLength = 0.55
-veloBRW_coneMinLength = 0.1 
-for i in range(50000):
+veloBRW_coneMinLength = 0.01
+for i in range(20000):
     veloBRW_pts.append(generateUniformSpherePoint())
     #veloBRW_pts.append(generateWeightedSpherePoint(1))
-
+# Print Arduino PROGMEM array
+# print("const float veloBRW_pts[NUM_POINTS][3] PROGMEM = {")
+# for pt in veloBRW_pts:
+#     print(f"  {{ {pt[0]:.6f}, {pt[1]:.6f}, {pt[2]:.6f} }},")
+# print("};")
 veloBRW_prevPos = [0,0]
 veloBRW_pointsInRange = []
 veloBRW_coneLengthSquared = veloBRW_coneLength*veloBRW_coneLength #squared for performance
 veloBRW_coneMinLengthSquared = veloBRW_coneMinLength*veloBRW_coneMinLength #squared for performance
 def executeBoundedRandomVelocity(elapsed_time: float, desired_g: float, pos_sph: list):
-    global veloBRW_pts, veloBRW_maxVelocity, veloBRW_coneLengthSquared, veloBRW_coneMinLengthSquared, veloBRW_coneAngle, veloBRW_prevPos, veloBRW_lastChange, veloBRW_changeDT, x, y, veloBRW_pointsInRange
+    global veloBRW_pts, veloBRW_maxVelocity, veloBRW_coneLengthSquared, veloBRW_coneMinLengthSquared, veloBRW_coneAngle, veloBRW_prevPos, veloBRW_lastChange, veloBRW_changeDT, x, y, veloBRW_pointsInRange, q1_dot_prev, q2_dot_prev
+    
+    # Wrap angles to [0, 2π] range to prevent unbounded growth
+    pos_sph = [fmod(pos_sph[0], 2*math.pi), fmod(pos_sph[1], 2*math.pi)]
+    
     if(elapsed_time > (veloBRW_lastChange + veloBRW_changeDT)):
+        # print("\n--- NEW VELOBRW CALCULATION ---")
         veloBRW_pointsInRange = []
-        veloBRW_lastChange += veloBRW_changeDT
+        veloBRW_lastChange += veloBRW_changeDT   
         prev_pos_cart = sph2cart(*veloBRW_prevPos)
         pos_cart = sph2cart(*pos_sph)
-        #if(pos_sph != [0,0]):
-        #    print(pos_sph, pos_cart, cart2sph(*pos_cart))
-        velo = v3Scale(v3Sub(pos_cart, prev_pos_cart), 1 / dt)
+        velo = v3Scale(v3Sub(pos_cart, prev_pos_cart), 1 / veloBRW_changeDT)
         for candidatePt in veloBRW_pts:
             candVector = v3Sub(candidatePt, pos_cart)
             magS = magSquared3(candVector)
             if(magS < veloBRW_coneLengthSquared and magS > veloBRW_coneMinLengthSquared):
                 if(magSquared3(velo) == 0 or v3Angle(candVector,velo) < veloBRW_coneAngle):
                     veloBRW_pointsInRange.append(candidatePt)
+        # print(f"  4. Found {len(veloBRW_pointsInRange)} points in cone.")
         if(len(veloBRW_pointsInRange) != 0):
-            pt = random.choice(veloBRW_pointsInRange)
-            desired = cart2sph(*pt)
-            desired = fmodl(desired, 2 * math.pi)
-            veloBRW_pts.remove(pt)
-            veloBRW_pts.append(generateUniformSpherePoint())
-            delt = [delta(pos_sph[0], desired[0], 2 * math.pi), delta(pos_sph[1], desired[1], 2 * math.pi)]
-            px = x
-            py = y
-            x, y = norm2(delt)
-            if(1):
-                
-                if(1 or abs(px - x) + abs(py - y) > 0.1):
-                    print(f"A{pos_sph[0]:.2f},{pos_sph[1]:.2f} D{desired[0]:.2f},{desired[1]:.2f} delt{delt[0]:.2f},{delt[1]:.2f} {px:.2f},{py:.2f} -> {x:.2f},{y:.2f}")
+            if (pos_cart[1]*pos_cart[1] + pos_cart[2]*pos_cart[2] < 0.01):
+                # print("WARNING: Approaching singularity! returning previous velocity")
+                return [q1_dot_prev, q2_dot_prev, trail, veloBRW_pointsInRange]
+                print((q1_dot_prev,q2_dot_prev))
+                print("now simulating:")
+                for pts in veloBRW_pointsInRange:
+                    simulate(pts, pos_cart)
+            pt = random.choice(veloBRW_pointsInRange)    
+            k3 = pos_cart[0]
+            k1 = pos_cart[1]
+            k2 = pos_cart[2]
+            k1_dot = (pt[1] - k1) / veloBRW_changeDT
+            k2_dot = (pt[2] - k2) / veloBRW_changeDT
+            k3_dot = (pt[0] - k3) / veloBRW_changeDT
+            # Add this epsilon (a tiny number) to your denominators
+            epsilon = 1e-6 
+            denominator_sq = (k1*k1 + k2*k2)
+            # #outer
+            q1_dot = ((k1*k2_dot) - (k2*k1_dot)) / (denominator_sq + epsilon)
+            # #inner
+            q2_dot = -k3_dot / (math.sqrt(denominator_sq + epsilon))
+            # if direction change during singularity, ignore beacuase thats weird
+            if (denominator_sq < 0.2 and (q2_dot > 0 and q2_dot_prev < 0) or (q2_dot < 0 and q2_dot_prev > 0)):
+                q2_dot = q2_dot * -1
+                # print("saved")
+            # if ((q2_dot > 0 and q2_dot_prev < 0) or (q2_dot < 0 and q2_dot_prev > 0)):
+            #     if abs(q2_dot - q2_dot_prev) > 0.5:
+            #         q2_dot = q2_dot * -1
+            #         print("savedx2w")
+            x, y = norm2([q1_dot,q2_dot])
             x, y = v2Scale([x, y], veloBRW_maxVelocity)
+            # print(f"  9. PREV VELO: x={q1_dot_prev:.3f}, y={q2_dot_prev:.3f}")
+            # print(f"  9. FINAL VELO: x={x:.3f}, y={y:.3f}")
+
+            q1_dot_prev = q1_dot
+            q2_dot_prev = q2_dot
+        else:
+            print("  WARN: no points found")
     veloBRW_prevPos = pos_sph
     addTrail(pos_sph)
-    return [x,y, trail,veloBRW_pointsInRange]
+    return [x,y,trail,veloBRW_pointsInRange]
+
+
+
+
 
 posBRW_lastChange = 0
 posBRW_changeDT = 0.02 #sec
@@ -143,7 +183,26 @@ posBRW_coneMinLength = 0.1
 for i in range(50000):
     posBRW_pts.append(generateUniformSpherePoint())
     #veloBRW_pts.append(generateWeightedSpherePoint(1))
+def simulate(pt: list, pos_cart: list):
+    k3 = pos_cart[0]
+    k1 = pos_cart[1]
+    k2 = pos_cart[2]
 
+    k1_dot = (pt[1] - k1) / veloBRW_changeDT
+    k2_dot = (pt[2] - k2) / veloBRW_changeDT
+    k3_dot = (pt[0] - k3) / veloBRW_changeDT
+
+    # Add this epsilon (a tiny number) to your denominators
+    epsilon = 1e-6 
+    denominator_sq = (k1*k1 + k2*k2)
+    # denominator_sqrt = math.sqrt(denominator_sq)
+    
+    # #outer
+    q1_dot = ((k1*k2_dot) - (k2*k1_dot)) / (denominator_sq + epsilon)
+    # #inner
+    q2_dot = -k3_dot / (math.sqrt(denominator_sq + epsilon))
+    print((q1_dot,q2_dot))
+    return [q1_dot, q2_dot]
 posBRW_prevPos = [0,0]
 posBRW_pointsInRange = []
 posBRW_coneLengthSquared = posBRW_coneLength*posBRW_coneLength #squared for performance
